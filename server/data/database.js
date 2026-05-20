@@ -102,10 +102,16 @@ export async function initializeDatabase() {
       CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
         phone TEXT UNIQUE NOT NULL,
+        password TEXT,
         name TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT
       );
+    `);
+
+    // Ensure password column exists in Neon PG for existing databases
+    await pool.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS password TEXT;
     `);
 
     // 5. Create Login Logs Table
@@ -388,12 +394,14 @@ export async function initializeDatabase() {
         {
           id: 'user-1',
           phone: '13900000001',
+          password: '$2a$10$8K1p/a0DXx5a8YV5uGjSDeX8s53f18x3f721G481.5Y1Zz72X2mpy', // 123456
           name: '杨妈妈',
           created_at: new Date().toISOString()
         },
         {
           id: 'user-2',
           phone: '13800000000',
+          password: '$2a$10$8K1p/a0DXx5a8YV5uGjSDeX8s53f18x3f721G481.5Y1Zz72X2mpy', // 123456
           name: '张爸爸',
           created_at: new Date().toISOString()
         }
@@ -407,8 +415,8 @@ export async function initializeDatabase() {
       }
       for (const u of defaultUsers) {
         await pool.query(
-          'INSERT INTO users (id, phone, name, created_at) VALUES ($1, $2, $3, $4)',
-          [u.id, u.phone, u.name, u.created_at]
+          'INSERT INTO users (id, phone, password, name, created_at) VALUES ($1, $2, $3, $4, $5)',
+          [u.id, u.phone, u.password, u.name, u.created_at]
         );
       }
     }
@@ -743,8 +751,8 @@ export const db = {
 
     // Background write to PG
     pool.query(
-      'INSERT INTO users (id, phone, name, created_at) VALUES ($1, $2, $3, $4)',
-      [newUser.id, newUser.phone, newUser.name, newUser.createdAt]
+      'INSERT INTO users (id, phone, password, name, created_at) VALUES ($1, $2, $3, $4, $5)',
+      [newUser.id, newUser.phone, newUser.password || null, newUser.name, newUser.createdAt]
     ).catch(err => console.error('Error persisting user to PG:', err));
 
     return newUser;
@@ -761,8 +769,8 @@ export const db = {
 
       // Background write to PG
       pool.query(
-        'UPDATE users SET phone = $1, name = $2, updated_at = $3 WHERE id = $4',
-        [updated.phone, updated.name, updated.updatedAt, id]
+        'UPDATE users SET phone = $1, name = $2, updated_at = $3, password = $4 WHERE id = $5',
+        [updated.phone, updated.name, updated.updatedAt, updated.password || null, id]
       ).catch(err => console.error('Error updating user in PG:', err));
 
       return updated;

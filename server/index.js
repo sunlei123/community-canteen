@@ -12,6 +12,7 @@ import orderRoutes from './routes/orders.js';
 import adminRoutes from './routes/admin.js';
 import authRoutes from './routes/auth.js';
 import studentRoutes from './routes/students.js';
+import publicOrderRoutes from './routes/public-order.js';
 import { initializeDatabase } from './data/database.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -55,12 +56,16 @@ app.use('/uploads', express.static(join(__dirname, 'uploads')));
 // 管理后台静态文件服务
 app.use('/admin', express.static(join(__dirname, '../admin')));
 
+// 公共订餐页面静态文件服务
+app.use(express.static(join(__dirname, '../public')));
+
 // API路由
 app.use('/api/menu', menuRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/admin/students', studentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/public', publicOrderRoutes);
 
 // 健康检查
 app.get('/api/health', (req, res) => {

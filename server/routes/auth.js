@@ -298,6 +298,156 @@ router.post('/phone-login', (req, res) => {
   }
 });
 
+// 家长密码登录
+router.post('/parent-login', async (req, res) => {
+  const ip = req.ip || req.connection.remoteAddress || '127.0.0.1';
+  const userAgent = req.headers['user-agent'] || 'Unknown';
+  try {
+    const { phone, password } = req.body;
+    
+    if (!phone || !password) {
+      db.addLoginLog({ phone: phone || 'empty', role: 'parent', status: 'failed', ip, userAgent });
+      return res.status(400).json({
+        success: false,
+        message: '手机号和密码不能为空'
+      });
+    }
+
+    // 查找用户
+    const user = db.getUserByPhone(phone);
+    if (!user) {
+      db.addLoginLog({ phone, role: 'parent', status: 'failed', ip, userAgent });
+      return res.status(401).json({
+        success: false,
+        message: '该手机号未注册，请先注册并关联学生'
+      });
+    }
+
+    // 验证密码
+    let isValidPassword = false;
+    if (!user.password) {
+      // 允许使用默认密码 123456 登录未设置密码的旧导入用户
+      isValidPassword = (password === '123456');
+    } else {
+      isValidPassword = await bcrypt.compare(password, user.password);
+    }
+
+    if (!isValidPassword) {
+      db.addLoginLog({ phone, role: 'parent', status: 'failed', ip, userAgent });
+      return res.status(401).json({
+        success: false,
+        message: '手机号或密码错误'
+      });
+    }
+
+    // 获取绑定的学生列表
+    const students = db.getStudentsByPhone(phone);
+
+    // 生成家长端 JWT token
+    const token = generateToken({ 
+      id: user.id,
+      phone: user.phone,
+      name: user.name,
+      role: 'parent' 
+    });
+
+    // 记录成功登录日志
+    db.addLoginLog({ phone, role: 'parent', status: 'success', ip, userAgent });
+
+    res.json({
+      success: true,
+      message: '登录成功',
+      data: {
+        token,
+        user: { id: user.id, phone: user.phone, name: user.name },
+        students
+      }
+    });
+  } catch (error) {
+    db.addLoginLog({ phone: req.body.phone || 'unknown', role: 'parent', status: 'failed', ip, userAgent });
+    res.status(500).json({
+      success: false,
+      message: '登录失败',
+      error: error.message
+    });
+  }
+});
+
+// 家长注册接口
+router.post('/parent-register', async (req, res) => {
+  try {
+    const { phone, name, password } = req.body;
+    if (!phone || !name || !password) {
+      return res.status(400).json({
+        success: false,
+        message: '手机号、姓名和密码不能为空'
+      });
+    }
+
+    if (!/^1\d{10}$/.test(phone)) {
+      return res.status(400).json({
+        success: false,
+        message: '请输入正确的11位手机号'
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: '密码长度至少为6位'
+      });
+    }
+
+    // 检查是否已存在此手机号的用户
+    const existingUser = db.getUserByPhone(phone);
+    if (existingUser) {
+      // 如果已存在且已经有密码，则提示已存在
+      if (existingUser.password) {
+        return res.status(400).json({
+          success: false,
+          message: '该手机号已注册，可以直接登录'
+        });
+      }
+      
+      // 如果已存在但没有密码（例如后台导入的），则为该用户设置密码和姓名
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(password, salt);
+      
+      const updated = db.updateUser(existingUser.id, {
+        name,
+        password: hashedPassword
+      });
+
+      return res.json({
+        success: true,
+        message: '激活账户并设置密码成功，请返回登录',
+        data: updated
+      });
+    }
+
+    // 如果完全不存在此用户，则新建用户
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const newUser = db.addUser({
+      phone,
+      name,
+      password: hashedPassword
+    });
+
+    res.status(201).json({
+      success: true,
+      message: '注册成功，请进行登录',
+      data: newUser
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '注册失败: ' + error.message
+    });
+  }
+});
+
 // 验证当前token
 router.get('/verify', authenticateToken, (req, res) => {
   res.json({

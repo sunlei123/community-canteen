@@ -164,6 +164,20 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify({ phone, code }),
     });
+  },
+
+  parentLogin: (phone: string, password: string) => {
+    return apiRequest<{ token: string; user: any; students: any[] }>('/auth/parent-login', {
+      method: 'POST',
+      body: JSON.stringify({ phone, password }),
+    });
+  },
+
+  parentRegister: (phone: string, name: string, password: string) => {
+    return apiRequest<any>('/auth/parent-register', {
+      method: 'POST',
+      body: JSON.stringify({ phone, name, password }),
+    });
   }
 };
 
