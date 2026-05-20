@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, MapPin, Clock } from 'lucide-react';
+import { Calendar, MapPin, Clock, UserCheck, KeyRound, Smartphone } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { MealTime, Address } from '../types';
+import { api } from '../services/api';
 import { Navbar } from '../components/Navbar';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
@@ -10,7 +11,16 @@ import { toast } from 'sonner';
 
 const Order: React.FC = () => {
   const navigate = useNavigate();
-  const { cartItems, getTotalPrice, setDeliveryInfo, setAddress, submitOrder, setOrderSubmitting } = useStore();
+  const { 
+    cartItems, getTotalPrice, setDeliveryInfo, setAddress, submitOrder, setOrderSubmitting,
+    userToken, students, currentStudentId, setUserToken, setStudents, setCurrentStudentId, logout
+  } = useStore();
+  
+  const [phone, setPhone] = useState('');
+  const [code, setCode] = useState('');
+  const [isSendingCode, setIsSendingCode] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [countdown, setCountdown] = useState(0);
   
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedMealTime, setSelectedMealTime] = useState<MealTime | ''>('');
@@ -53,7 +63,60 @@ const Order: React.FC = () => {
     setAddressState(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleSendCode = async () => {
+    if (!/^1\d{10}$/.test(phone)) {
+      toast.error('请输入正确的手机号');
+      return;
+    }
+    
+    try {
+      setIsSendingCode(true);
+      await api.auth.sendCode(phone);
+      toast.success('验证码发送成功（模拟环境请看后端控制台，或输入 888888）');
+      setCountdown(60);
+      const timer = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } catch (error: any) {
+      toast.error(error.message || '发送验证码失败');
+    } finally {
+      setIsSendingCode(false);
+    }
+  };
+
+  const handleLogin = async () => {
+    if (!phone || !code) {
+      toast.error('请输入手机号和验证码');
+      return;
+    }
+
+    try {
+      setIsLoggingIn(true);
+      const data = await api.auth.phoneLogin(phone, code);
+      setUserToken(data.token);
+      setStudents(data.students);
+      if (data.students.length > 0) {
+        setCurrentStudentId(data.students[0].id);
+      }
+      toast.success('登录成功');
+    } catch (error: any) {
+      toast.error(error.message || '登录失败');
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
   const validateForm = () => {
+    if (!userToken || !currentStudentId) {
+      toast.error('请先登录并选择订餐学生');
+      return false;
+    }
     if (!selectedDate) {
       toast.error('请选择配送日期');
       return false;
@@ -161,6 +224,98 @@ const Order: React.FC = () => {
                   </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* 账号与学生选择 */}
+          <Card>
+            <CardHeader>
+              <h3 className="font-semibold text-gray-800 flex items-center">
+                <UserCheck className="w-5 h-5 mr-2" />
+                订餐人信息
+              </h3>
+            </CardHeader>
+            <CardContent>
+              {!userToken ? (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">手机号</label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Smartphone className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        type="tel"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="请输入家长手机号"
+                        className="pl-10 w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">验证码</label>
+                    <div className="flex space-x-2">
+                      <div className="relative flex-1">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <KeyRound className="h-5 w-5 text-gray-400" />
+                        </div>
+                        <input
+                          type="text"
+                          value={code}
+                          onChange={(e) => setCode(e.target.value)}
+                          placeholder="输入验证码"
+                          className="pl-10 w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        />
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        onClick={handleSendCode} 
+                        disabled={countdown > 0 || isSendingCode}
+                        className="whitespace-nowrap"
+                      >
+                        {countdown > 0 ? `${countdown}s` : '获取验证码'}
+                      </Button>
+                    </div>
+                  </div>
+                  <Button 
+                    className="w-full" 
+                    onClick={handleLogin}
+                    disabled={isLoggingIn}
+                  >
+                    {isLoggingIn ? '登录中...' : '登录验证'}
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">已绑定手机号：{phone || '当前账号'}</span>
+                    <button onClick={logout} className="text-sm text-blue-600 hover:text-blue-800">切换账号</button>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">选择订餐学生</label>
+                    <div className="space-y-2">
+                      {students.map(student => (
+                        <div 
+                          key={student.id}
+                          onClick={() => setCurrentStudentId(student.id)}
+                          className={`p-3 border rounded-lg cursor-pointer flex justify-between items-center ${
+                            currentStudentId === student.id ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:bg-gray-50'
+                          }`}
+                        >
+                          <div>
+                            <span className="font-medium text-gray-900">{student.name}</span>
+                            <span className="ml-2 text-sm text-gray-500">{student.class}</span>
+                          </div>
+                          {currentStudentId === student.id && (
+                            <span className="text-orange-500">✓</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 

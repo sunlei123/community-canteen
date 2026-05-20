@@ -7,10 +7,13 @@ const router = express.Router();
 
 // 管理员登录
 router.post('/login', async (req, res) => {
+  const ip = req.ip || req.connection.remoteAddress || '127.0.0.1';
+  const userAgent = req.headers['user-agent'] || 'Unknown';
   try {
     const { username, password } = req.body;
     
     if (!username || !password) {
+      db.addLoginLog({ phone: username || 'empty', role: 'admin', status: 'failed', ip, userAgent });
       // 检查是否是HTML表单提交
       if (req.headers['content-type'] && req.headers['content-type'].includes('application/x-www-form-urlencoded')) {
         return res.status(400).send(`
@@ -33,6 +36,7 @@ router.post('/login', async (req, res) => {
     // 查找管理员
     const admin = db.getAdminByUsername(username);
     if (!admin) {
+      db.addLoginLog({ phone: username, role: 'admin', status: 'failed', ip, userAgent });
       // 检查是否是HTML表单提交
       if (req.headers['content-type'] && req.headers['content-type'].includes('application/x-www-form-urlencoded')) {
         return res.status(401).send(`
@@ -55,6 +59,7 @@ router.post('/login', async (req, res) => {
     // 验证密码
     const isValidPassword = await bcrypt.compare(password, admin.password);
     if (!isValidPassword) {
+      db.addLoginLog({ phone: username, role: 'admin', status: 'failed', ip, userAgent });
       // 检查是否是HTML表单提交
       if (req.headers['content-type'] && req.headers['content-type'].includes('application/x-www-form-urlencoded')) {
         return res.status(401).send(`
@@ -83,6 +88,9 @@ router.post('/login', async (req, res) => {
     
     // 返回用户信息（不包含密码）
     const { password: _, ...adminInfo } = admin;
+    
+    // 记录成功登录日志
+    db.addLoginLog({ phone: username, role: 'admin', status: 'success', ip, userAgent });
     
     // 检查是否是HTML表单提交
     if (req.headers['content-type'] && req.headers['content-type'].includes('application/x-www-form-urlencoded')) {
@@ -129,6 +137,7 @@ router.post('/login', async (req, res) => {
       }
     });
   } catch (error) {
+    db.addLoginLog({ phone: req.body.username || 'unknown', role: 'admin', status: 'failed', ip, userAgent });
     // 检查是否是HTML表单提交
     if (req.headers['content-type'] && req.headers['content-type'].includes('application/x-www-form-urlencoded')) {
       return res.status(500).send(`
@@ -151,6 +160,143 @@ router.post('/login', async (req, res) => {
 });
 
 
+
+// 模拟存储验证码的内存对象
+const verificationCodes = {};
+
+// 获取短信验证码
+router.post('/send-code', (req, res) => {
+  try {
+    const { phone } = req.body;
+    
+    if (!phone || !/^1\d{10}$/.test(phone)) {
+      return res.status(400).json({
+        success: false,
+        message: '请输入正确的手机号'
+      });
+    }
+
+    // 检查手机号是否在系统中存在
+    const students = db.getStudentsByPhone(phone);
+    if (students.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: '该手机号未绑定任何学生，请联系管理员'
+      });
+    }
+
+    // 生成6位随机验证码
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    verificationCodes[phone] = {
+      code,
+      expiresAt: Date.now() + 5 * 60 * 1000 // 5分钟有效期
+    };
+
+    // 模拟发送短信
+    console.log(`\n============================`);
+    console.log(`📩 【模拟短信发送】`);
+    console.log(`发送至: ${phone}`);
+    console.log(`验证码: ${code}`);
+    console.log(`有效期: 5分钟`);
+    console.log(`============================\n`);
+
+    res.json({
+      success: true,
+      message: '验证码发送成功（模拟环境请看控制台打印）'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '发送验证码失败',
+      error: error.message
+    });
+  }
+});
+
+// 家长手机号登录
+router.post('/phone-login', (req, res) => {
+  const ip = req.ip || req.connection.remoteAddress || '127.0.0.1';
+  const userAgent = req.headers['user-agent'] || 'Unknown';
+  try {
+    const { phone, code } = req.body;
+    
+    if (!phone || !code) {
+      db.addLoginLog({ phone: phone || 'empty', role: 'parent', status: 'failed', ip, userAgent });
+      return res.status(400).json({
+        success: false,
+        message: '手机号和验证码不能为空'
+      });
+    }
+
+    // 万能验证码（为了方便演示和测试）
+    if (code !== '888888') {
+      // 真实验证码校验
+      const verification = verificationCodes[phone];
+      if (!verification) {
+        db.addLoginLog({ phone, role: 'parent', status: 'failed', ip, userAgent });
+        return res.status(400).json({
+          success: false,
+          message: '请先获取验证码'
+        });
+      }
+
+      if (Date.now() > verification.expiresAt) {
+        db.addLoginLog({ phone, role: 'parent', status: 'failed', ip, userAgent });
+        delete verificationCodes[phone];
+        return res.status(400).json({
+          success: false,
+          message: '验证码已过期，请重新获取'
+        });
+      }
+
+      if (verification.code !== code) {
+        db.addLoginLog({ phone, role: 'parent', status: 'failed', ip, userAgent });
+        return res.status(400).json({
+          success: false,
+          message: '验证码错误'
+        });
+      }
+    }
+
+    // 获取绑定的学生列表
+    const students = db.getStudentsByPhone(phone);
+    if (students.length === 0) {
+      db.addLoginLog({ phone, role: 'parent', status: 'failed', ip, userAgent });
+      return res.status(404).json({
+        success: false,
+        message: '未找到绑定的学生记录'
+      });
+    }
+
+    // 验证成功，删除验证码
+    delete verificationCodes[phone];
+
+    // 生成家长端 JWT token
+    const token = generateToken({ 
+      phone,
+      role: 'parent' 
+    });
+
+    // 记录成功登录日志
+    db.addLoginLog({ phone, role: 'parent', status: 'success', ip, userAgent });
+
+    res.json({
+      success: true,
+      message: '登录成功',
+      data: {
+        token,
+        students
+      }
+    });
+  } catch (error) {
+    db.addLoginLog({ phone: req.body.phone || 'unknown', role: 'parent', status: 'failed', ip, userAgent });
+    res.status(500).json({
+      success: false,
+      message: '登录失败',
+      error: error.message
+    });
+  }
+});
 
 // 验证当前token
 router.get('/verify', authenticateToken, (req, res) => {

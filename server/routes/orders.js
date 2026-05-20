@@ -6,7 +6,7 @@ const router = express.Router();
 // 创建订单
 router.post('/', (req, res) => {
   try {
-    const { items, address, deliveryDate, mealTime, customerInfo, totalPrice } = req.body;
+    const { items, address, deliveryDate, mealTime, customerInfo, totalPrice, studentId } = req.body;
     
     // 验证必填字段
     if (!items || !items.length) {
@@ -20,6 +20,13 @@ router.post('/', (req, res) => {
       return res.status(400).json({
         success: false,
         message: '配送信息不完整'
+      });
+    }
+
+    if (!studentId) {
+      return res.status(400).json({
+        success: false,
+        message: '请选择订餐学生'
       });
     }
     
@@ -58,6 +65,7 @@ router.post('/', (req, res) => {
       deliveryDate,
       mealTime,
       customerInfo: customerInfo || {},
+      studentId,
       orderNumber: generateOrderNumber()
     };
     

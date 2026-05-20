@@ -11,15 +11,22 @@ import menuRoutes from './routes/menu.js';
 import orderRoutes from './routes/orders.js';
 import adminRoutes from './routes/admin.js';
 import authRoutes from './routes/auth.js';
+import studentRoutes from './routes/students.js';
+import { initializeDatabase } from './data/database.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Initialize Neon PG database tables & hydrate in-memory arrays before request handling
+await initializeDatabase();
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// 安全中间件
-app.use(helmet());
+// 安全中间件（关闭 CSP，允许内嵌脚本和 CDN 资源）
+app.use(helmet({
+  contentSecurityPolicy: false
+}));
 
 // CORS配置
 app.use(cors({
@@ -51,6 +58,7 @@ app.use('/admin', express.static(join(__dirname, '../admin')));
 // API路由
 app.use('/api/menu', menuRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/admin/students', studentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/auth', authRoutes);
 

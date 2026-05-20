@@ -1,107 +1,145 @@
 import { Food, FoodCategory } from '../types';
 
 export const mockFoods: Food[] = [
-  // 主菜
+  // 荤菜 (meat)
   {
-    id: 'main-1',
+    id: '1',
     name: '红烧肉',
     price: 28,
-    image: 'https://trae-api-us.mchost.guru/api/ide/v1/text_to_image?prompt=delicious%20braised%20pork%20belly%20in%20brown%20sauce%2C%20Chinese%20cuisine%2C%20glossy%20and%20tender%2C%20food%20photography&image_size=square',
-    category: FoodCategory.MAIN,
-    description: '肥瘦相间，入口即化',
-    nutrition: '蛋白质丰富',
+    image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=300&h=200&fit=crop',
+    category: FoodCategory.MEAT,
+    description: '肥瘦相间，软糯香甜',
+    nutrition: '蛋白质丰富，铁质充足',
     isPopular: true
   },
   {
-    id: 'main-2', 
+    id: '2', 
     name: '宫保鸡丁',
     price: 25,
-    image: 'https://trae-api-us.mchost.guru/api/ide/v1/text_to_image?prompt=kung%20pao%20chicken%20with%20peanuts%20and%20dried%20chili%2C%20Chinese%20stir%20fry%20dish%2C%20colorful%20and%20appetizing%2C%20food%20photography&image_size=square',
-    category: FoodCategory.MAIN,
+    image: 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=300&h=200&fit=crop',
+    category: FoodCategory.MEAT,
     description: '酸甜微辣，嫩滑爽口',
-    nutrition: '高蛋白低脂肪'
+    nutrition: '高蛋白低脂'
   },
   {
-    id: 'main-3',
+    id: '4',
+    name: '糖醋里脊',
+    price: 32,
+    image: 'https://images.unsplash.com/photo-1574484284002-952d92456975?w=300&h=200&fit=crop',
+    category: FoodCategory.MEAT,
+    description: '酸甜可口，外酥内嫩',
+    nutrition: '优质蛋白，健脾开胃',
+    isPopular: true
+  },
+  {
+    id: '16',
+    name: '红烧排骨',
+    price: 35,
+    image: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=300&h=200&fit=crop',
+    category: FoodCategory.MEAT,
+    description: '排骨酥烂，酱香浓郁',
+    nutrition: '富含钙质与优质蛋白'
+  },
+
+  // 素菜 (veggie)
+  {
+    id: '3',
     name: '麻婆豆腐',
     price: 18,
-    image: 'https://trae-api-us.mchost.guru/api/ide/v1/text_to_image?prompt=mapo%20tofu%20with%20minced%20meat%20and%20spicy%20sauce%2C%20Sichuan%20cuisine%2C%20red%20oil%20and%20tender%20tofu%2C%20food%20photography&image_size=square',
-    category: FoodCategory.MAIN,
+    image: 'https://images.unsplash.com/photo-1581833971358-2c8b550f87b3?w=300&h=200&fit=crop',
+    category: FoodCategory.VEGGIE,
     description: '麻辣鲜香，嫩滑可口',
-    nutrition: '植物蛋白丰富',
+    nutrition: '丰富植物蛋白',
     isPopular: true
   },
-
-  // 甜点
   {
-    id: 'dessert-1',
+    id: '11',
+    name: '手撕包菜',
+    price: 15,
+    image: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=300&h=200&fit=crop',
+    category: FoodCategory.VEGGIE,
+    description: '爽脆清甜，香辣开胃',
+    nutrition: '富含膳食纤维、维生素C'
+  },
+  {
+    id: '17',
+    name: '地三鲜',
+    price: 18,
+    image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=300&h=200&fit=crop',
+    category: FoodCategory.VEGGIE,
+    description: '土豆茄子青椒，咸鲜下饭',
+    nutrition: '多种蔬菜，微量元素丰富'
+  },
+
+  // 甜点/水果 (dessert_fruit)
+  {
+    id: '5',
     name: '红豆汤圆',
     price: 12,
-    image: 'https://trae-api-us.mchost.guru/api/ide/v1/text_to_image?prompt=sweet%20red%20bean%20soup%20with%20glutinous%20rice%20balls%2C%20traditional%20Chinese%20dessert%2C%20warm%20and%20comforting%2C%20food%20photography&image_size=square',
-    category: FoodCategory.DESSERT,
-    description: '软糯香甜，温暖心田',
-    nutrition: '碳水化合物'
+    image: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=300&h=200&fit=crop',
+    category: FoodCategory.DESSERT_FRUIT,
+    description: '软糯香甜，暖心暖胃',
+    nutrition: '清心温补，碳水化合物'
   },
   {
-    id: 'dessert-2',
+    id: '6',
     name: '绿豆糕',
     price: 15,
-    image: 'https://trae-api-us.mchost.guru/api/ide/v1/text_to_image?prompt=traditional%20Chinese%20mung%20bean%20cake%2C%20delicate%20green%20color%2C%20square%20shaped%20pastry%2C%20elegant%20presentation%2C%20food%20photography&image_size=square',
-    category: FoodCategory.DESSERT,
-    description: '清香淡雅，口感细腻',
-    nutrition: '清热解毒',
+    image: 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=300&h=200&fit=crop',
+    category: FoodCategory.DESSERT_FRUIT,
+    description: '清香甘甜，细腻消暑',
+    nutrition: '维生素B丰富，清热解毒',
     isPopular: true
   },
-
-  // 水果
   {
-    id: 'fruit-1',
+    id: '7',
     name: '时令水果拼盘',
     price: 20,
-    image: 'https://trae-api-us.mchost.guru/api/ide/v1/text_to_image?prompt=fresh%20seasonal%20fruit%20platter%20with%20colorful%20mixed%20fruits%2C%20apple%20orange%20grape%20kiwi%2C%20healthy%20and%20vibrant%2C%20food%20photography&image_size=square',
-    category: FoodCategory.FRUIT,
-    description: '新鲜时令，营养丰富',
-    nutrition: '维生素C丰富',
+    image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=300&h=200&fit=crop',
+    category: FoodCategory.DESSERT_FRUIT,
+    description: '新鲜时令水果大组合',
+    nutrition: '维生素C极其丰富',
     isPopular: true
-  },
-  {
-    id: 'fruit-2',
-    name: '蜜瓜球',
-    price: 16,
-    image: 'https://trae-api-us.mchost.guru/api/ide/v1/text_to_image?prompt=fresh%20cantaloupe%20melon%20balls%20in%20a%20bowl%2C%20orange%20colored%20sweet%20fruit%2C%20refreshing%20and%20juicy%2C%20food%20photography&image_size=square',
-    category: FoodCategory.FRUIT,
-    description: '香甜多汁，清爽解腻',
-    nutrition: '水分充足'
   },
 
-  // 饮品
+  // 汤 (soup)
   {
-    id: 'drink-1',
-    name: '柠檬蜂蜜茶',
+    id: '12',
+    name: '西红柿鸡蛋汤',
+    price: 12,
+    image: 'https://images.unsplash.com/photo-1547592180-85f173990554?w=300&h=200&fit=crop',
+    category: FoodCategory.SOUP,
+    description: '酸甜开胃，色泽诱人',
+    nutrition: '番茄红素与卵磷脂'
+  },
+  {
+    id: '13',
+    name: '排骨玉米汤',
     price: 18,
-    image: 'https://trae-api-us.mchost.guru/api/ide/v1/text_to_image?prompt=refreshing%20lemon%20honey%20tea%20in%20glass%20cup%2C%20golden%20color%20with%20lemon%20slices%2C%20healthy%20beverage%2C%20food%20photography&image_size=square',
-    category: FoodCategory.DRINK,
-    description: '酸甜清香，生津止渴',
-    nutrition: '维生素C',
-    isPopular: true
+    image: 'https://images.unsplash.com/photo-1607532941433-304659e8198a?w=300&h=200&fit=crop',
+    category: FoodCategory.SOUP,
+    description: '玉米清甜，排骨酥烂',
+    nutrition: '滋补钙质，维生素丰富'
+  },
+
+  // 主食 (staple)
+  {
+    id: '14',
+    name: '白米饭',
+    price: 2,
+    image: 'https://images.unsplash.com/photo-1536304997881-a372c179924b?w=300&h=200&fit=crop',
+    category: FoodCategory.STAPLE,
+    description: '精选优质大米，香甜软糯',
+    nutrition: '提供必备碳水化合物能量'
   },
   {
-    id: 'drink-2',
-    name: '银耳莲子汤',
-    price: 22,
-    image: 'https://trae-api-us.mchost.guru/api/ide/v1/text_to_image?prompt=traditional%20Chinese%20white%20fungus%20and%20lotus%20seed%20soup%2C%20clear%20nutritious%20broth%2C%20healthy%20dessert%20drink%2C%20food%20photography&image_size=square',
-    category: FoodCategory.DRINK,
-    description: '滋阴润燥，美容养颜',
-    nutrition: '胶原蛋白'
-  },
-  {
-    id: 'drink-3',
-    name: '乌龙茶',
-    price: 15,
-    image: 'https://trae-api-us.mchost.guru/api/ide/v1/text_to_image?prompt=traditional%20oolong%20tea%20in%20ceramic%20teacup%2C%20amber%20colored%20tea%2C%20elegant%20Chinese%20tea%20culture%2C%20food%20photography&image_size=square',
-    category: FoodCategory.DRINK,
-    description: '清香回甘，去油解腻',
-    nutrition: '抗氧化'
+    id: '15',
+    name: '手工小馒头',
+    price: 3,
+    image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=300&h=200&fit=crop',
+    category: FoodCategory.STAPLE,
+    description: '暄软可口，面香浓郁',
+    nutrition: '易消化，补益脾胃'
   }
 ];
 

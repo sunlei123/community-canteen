@@ -3,6 +3,15 @@ import { Food, CartItem, Order, Address, MealTime } from '../types';
 import { api } from '../services/api';
 
 interface StoreState {
+  // 用户及学生状态
+  userToken: string | null;
+  students: any[];
+  currentStudentId: string | null;
+  setUserToken: (token: string | null) => void;
+  setStudents: (students: any[]) => void;
+  setCurrentStudentId: (id: string | null) => void;
+  logout: () => void;
+
   // 购物车状态
   cartItems: CartItem[];
   addToCart: (food: Food) => void;
@@ -28,12 +37,41 @@ interface StoreState {
   categories: any[];
   isLoading: boolean;
   error: string | null;
-  loadFoods: () => Promise<void>;
+  loadFoods: (date?: string) => Promise<void>;
   loadCategories: () => Promise<void>;
   searchFoods: (keyword: string) => Promise<Food[]>;
 }
 
 export const useStore = create<StoreState>((set, get) => ({
+  // 用户及学生初始状态
+  userToken: localStorage.getItem('userToken'),
+  students: JSON.parse(localStorage.getItem('userStudents') || '[]'),
+  currentStudentId: localStorage.getItem('currentStudentId'),
+  
+  setUserToken: (token) => {
+    if (token) localStorage.setItem('userToken', token);
+    else localStorage.removeItem('userToken');
+    set({ userToken: token });
+  },
+  
+  setStudents: (students) => {
+    localStorage.setItem('userStudents', JSON.stringify(students));
+    set({ students });
+  },
+  
+  setCurrentStudentId: (id) => {
+    if (id) localStorage.setItem('currentStudentId', id);
+    else localStorage.removeItem('currentStudentId');
+    set({ currentStudentId: id });
+  },
+  
+  logout: () => {
+    localStorage.removeItem('userToken');
+    localStorage.removeItem('userStudents');
+    localStorage.removeItem('currentStudentId');
+    set({ userToken: null, students: [], currentStudentId: null });
+  },
+
   // 购物车初始状态
   cartItems: [],
 
@@ -140,7 +178,8 @@ export const useStore = create<StoreState>((set, get) => ({
         address: currentOrder?.address || '',
         deliveryDate: currentOrder?.deliveryDate || '',
         mealTime: currentOrder?.mealTime || MealTime.LUNCH,
-        totalPrice: getTotalPrice()
+        totalPrice: getTotalPrice(),
+        studentId: get().currentStudentId || ''
       };
 
       const result = await api.order.create(orderData);
@@ -173,10 +212,10 @@ export const useStore = create<StoreState>((set, get) => ({
   },
 
   // API方法
-  loadFoods: async () => {
+  loadFoods: async (date?: string) => {
     try {
       set({ isLoading: true, error: null });
-      const foods = await api.menu.getItems();
+      const foods = await api.menu.getItems({ date });
       set({ foods, isLoading: false });
     } catch (error) {
       set({ 

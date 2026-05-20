@@ -6,8 +6,19 @@ const router = express.Router();
 // 获取所有菜品
 router.get('/', (req, res) => {
   try {
-    const { category, available } = req.query;
+    const { category, available, date } = req.query;
     let items = db.getMenuItems();
+    
+    // 按日期筛选（每日菜单）
+    if (date) {
+      const dailyMenu = db.getDailyMenuByDate(date);
+      if (dailyMenu && dailyMenu.published) {
+        items = items.filter(item => dailyMenu.dishes.includes(item.id));
+      } else {
+        // 如果该日期没有发布菜单，返回空
+        items = [];
+      }
+    }
     
     // 按分类筛选
     if (category) {
@@ -63,10 +74,11 @@ router.get('/:id', (req, res) => {
 router.get('/categories/list', (req, res) => {
   try {
     const categories = [
-      { key: 'main', name: '主菜', icon: '🍖' },
-      { key: 'dessert', name: '甜点', icon: '🍰' },
-      { key: 'fruit', name: '水果', icon: '🍎' },
-      { key: 'drink', name: '饮品', icon: '🥤' }
+      { key: 'meat', name: '荤菜', icon: '🍖' },
+      { key: 'veggie', name: '素菜', icon: '🥦' },
+      { key: 'dessert_fruit', name: '甜点/水果', icon: '🍰' },
+      { key: 'soup', name: '汤', icon: '🥣' },
+      { key: 'staple', name: '主食', icon: '🍚' }
     ];
     
     res.json({

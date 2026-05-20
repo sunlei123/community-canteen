@@ -14,10 +14,11 @@ const Home: React.FC = () => {
   const popularFoods = foods.filter(food => food.isPopular);
 
   const defaultCategories = [
-    { id: FoodCategory.MAIN, name: '主菜', emoji: '🍖', color: 'bg-red-100 text-red-600' },
-    { id: FoodCategory.DESSERT, name: '甜点', emoji: '🍰', color: 'bg-pink-100 text-pink-600' },
-    { id: FoodCategory.FRUIT, name: '水果', emoji: '🍎', color: 'bg-green-100 text-green-600' },
-    { id: FoodCategory.DRINK, name: '饮品', emoji: '🥤', color: 'bg-blue-100 text-blue-600' }
+    { id: FoodCategory.VEGGIE, name: '素菜', emoji: '🥦', color: 'bg-green-100 text-green-600' },
+    { id: FoodCategory.MEAT, name: '荤菜', emoji: '🍖', color: 'bg-red-100 text-red-600' },
+    { id: FoodCategory.DESSERT_FRUIT, name: '甜点/水果', emoji: '🍰', color: 'bg-pink-100 text-pink-600' },
+    { id: FoodCategory.SOUP, name: '汤', emoji: '🥣', color: 'bg-blue-100 text-blue-600' },
+    { id: FoodCategory.STAPLE, name: '主食', emoji: '🍚', color: 'bg-yellow-100 text-yellow-600' }
   ];
 
   const displayCategories = categories.length > 0 ? 
@@ -52,7 +53,7 @@ const Home: React.FC = () => {
         <div className="bg-gradient-to-br from-orange-400 to-orange-600 text-white p-6">
           <div className="text-center">
             <div className="text-6xl mb-4">🍱</div>
-            <h1 className="text-2xl font-bold mb-2">社区小饭桌</h1>
+            <h1 className="text-2xl font-bold mb-2">董老师小厨房</h1>
             <p className="text-orange-100 text-sm">
               新鲜食材 · 用心烹饪 · 温暖到家
             </p>

@@ -48,11 +48,11 @@ async function apiRequest<T>(
 
 // 菜品相关API
 export const menuApi = {
-  // 获取所有菜品
-  getItems: (params?: { category?: string; available?: boolean }) => {
+  getItems: (params?: { category?: string; available?: boolean; date?: string }) => {
     const searchParams = new URLSearchParams();
     if (params?.category) searchParams.append('category', params.category);
     if (params?.available !== undefined) searchParams.append('available', params.available.toString());
+    if (params?.date) searchParams.append('date', params.date);
     
     const query = searchParams.toString();
     return apiRequest<any[]>(`/menu${query ? `?${query}` : ''}`);
@@ -83,6 +83,7 @@ export const orderApi = {
     deliveryDate: string;
     mealTime: string;
     totalPrice: number;
+    studentId: string;
   }) => {
     return apiRequest<any>('/orders', {
       method: 'POST',
@@ -149,11 +150,29 @@ export const healthApi = {
   },
 };
 
+// 认证与学生相关API
+export const authApi = {
+  sendCode: (phone: string) => {
+    return apiRequest<any>('/auth/send-code', {
+      method: 'POST',
+      body: JSON.stringify({ phone }),
+    });
+  },
+  
+  phoneLogin: (phone: string, code: string) => {
+    return apiRequest<{ token: string; students: any[] }>('/auth/phone-login', {
+      method: 'POST',
+      body: JSON.stringify({ phone, code }),
+    });
+  }
+};
+
 // 导出默认API对象
 export const api = {
   menu: menuApi,
   order: orderApi,
   health: healthApi,
+  auth: authApi,
 };
 
 export default api;

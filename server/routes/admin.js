@@ -1,6 +1,35 @@
 import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { db } from '../data/database.js';
 import { authenticateToken } from '../middleware/auth.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// 配置文件上传
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, path.join(__dirname, '../uploads'));
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 限制5MB
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('只能上传图片文件！'), false);
+    }
+  }
+});
 
 const router = express.Router();
 
@@ -13,6 +42,7 @@ router.get('/dashboard', (req, res) => {
     const statistics = db.getStatistics();
     const orders = db.getOrders();
     const menuItems = db.getMenuItems();
+    const students = db.getStudents();
     
     // 最近订单
     const recentOrders = orders
@@ -41,9 +71,38 @@ router.get('/dashboard', (req, res) => {
         .filter(order => new Date(order.createdAt).toDateString() === date)
         .reduce((sum, order) => sum + order.totalPrice, 0)
     }));
+
+    // 当日订单详细统计
+    const todayStr = new Date().toDateString();
+    const todayOrders = orders.filter(order => new Date(order.createdAt).toDateString() === todayStr);
+    const todayOrdersRevenue = todayOrders.reduce((sum, order) => sum + order.totalPrice, 0);
+    const todayStatusDistribution = todayOrders.reduce((acc, order) => {
+      acc[order.status] = (acc[order.status] || 0) + 1;
+      return acc;
+    }, { pending: 0, confirmed: 0, delivered: 0, cancelled: 0 });
+
+    const todayDishQuantities = {};
+    todayOrders.forEach(order => {
+      if (order.status !== 'cancelled') {
+        order.items.forEach(item => {
+          todayDishQuantities[item.name] = (todayDishQuantities[item.name] || 0) + item.quantity;
+        });
+      }
+    });
+
+    const todayOrdersStats = {
+      count: todayOrders.length,
+      revenue: todayOrdersRevenue,
+      statusDistribution: todayStatusDistribution,
+      dishes: todayDishQuantities
+    };
     
     const dashboardData = {
-      statistics,
+      statistics: {
+        ...statistics,
+        totalStudents: students.length,
+        todayOrdersStats
+      },
       recentOrders,
       statusDistribution,
       dailyOrders,
@@ -347,5 +406,221 @@ function getHourlyDistribution(orders) {
   
   return hourCounts;
 }
+
+// ==================== 菜品图片上传 (Image Upload) ====================
+router.post('/menu/upload', upload.single('image'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: '没有选择上传的图片'
+      });
+    }
+    
+    const fileUrl = `/uploads/${req.file.filename}`;
+    res.json({
+      success: true,
+      message: '图片上传成功',
+      data: {
+        url: fileUrl
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '图片上传失败',
+      error: error.message
+    });
+  }
+});
+
+// ==================== 家长用户管理 (Users) ====================
+// 获取所有家长用户
+router.get('/users', (req, res) => {
+  try {
+    const users = db.getUsers();
+    res.json({
+      success: true,
+      data: users
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '获取用户列表失败',
+      error: error.message
+    });
+  }
+});
+
+// 添加家长用户
+router.post('/users', (req, res) => {
+  try {
+    const { phone, name } = req.body;
+    if (!phone || !name) {
+      return res.status(400).json({
+        success: false,
+        message: '手机号和家长姓名不能为空'
+      });
+    }
+    const newUser = db.addUser({ phone, name });
+    res.status(201).json({
+      success: true,
+      message: '用户添加成功',
+      data: newUser
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '添加用户失败',
+      error: error.message
+    });
+  }
+});
+
+// 更新家长用户
+router.put('/users/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { phone, name } = req.body;
+    const updatedUser = db.updateUser(id, { phone, name });
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        message: '用户不存在'
+      });
+    }
+    res.json({
+      success: true,
+      message: '用户更新成功',
+      data: updatedUser
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '更新用户失败',
+      error: error.message
+    });
+  }
+});
+
+// 删除家长用户
+router.delete('/users/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const deletedUser = db.deleteUser(id);
+    if (!deletedUser) {
+      return res.status(404).json({
+        success: false,
+        message: '用户不存在'
+      });
+    }
+    res.json({
+      success: true,
+      message: '用户删除成功',
+      data: deletedUser
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '删除用户失败',
+      error: error.message
+    });
+  }
+});
+
+// ==================== 登录日志管理 (Login Logs) ====================
+// 获取登录日志
+router.get('/logs', (req, res) => {
+  try {
+    const logs = db.getLoginLogs();
+    const sortedLogs = [...logs].sort((a, b) => new Date(b.loginTime) - new Date(a.loginTime));
+    res.json({
+      success: true,
+      data: sortedLogs
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '获取登录日志失败',
+      error: error.message
+    });
+  }
+});
+
+// ==================== 每日菜单管理 (Daily Menus) ====================
+// 获取每日菜单列表
+router.get('/daily-menus', (req, res) => {
+  try {
+    const { date } = req.query;
+    if (date) {
+      const menu = db.getDailyMenuByDate(date);
+      return res.json({
+        success: true,
+        data: menu || null
+      });
+    }
+    const menus = db.getDailyMenus();
+    res.json({
+      success: true,
+      data: menus
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '获取每日菜单失败',
+      error: error.message
+    });
+  }
+});
+
+// 保存/发布每日菜单
+router.post('/daily-menus', (req, res) => {
+  try {
+    const { date, dishes, published } = req.body;
+    if (!date || !dishes || !Array.isArray(dishes)) {
+      return res.status(400).json({
+        success: false,
+        message: '日期和菜品列表不能为空'
+      });
+    }
+    const savedMenu = db.saveDailyMenu(date, dishes, published !== false);
+    res.json({
+      success: true,
+      message: '每日菜单保存成功',
+      data: savedMenu
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '保存每日菜单失败',
+      error: error.message
+    });
+  }
+});
+
+// 删除每日菜单
+router.delete('/daily-menus/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const deletedMenu = db.deleteDailyMenu(id);
+    if (!deletedMenu) {
+      return res.status(404).json({
+        success: false,
+        message: '每日菜单记录不存在'
+      });
+    }
+    res.json({
+      success: true,
+      message: '每日菜单删除成功',
+      data: deletedMenu
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '删除每日菜单失败',
+      error: error.message
+    });
+  }
+});
 
 export default router;

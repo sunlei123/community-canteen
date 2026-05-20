@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>社区小饭桌 - 管理后台</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>董老师小厨房 - 管理后台</title>
+    <script src="tailwind.min.js"></script>
+    <script src="lucide.min.js"></script>
+    <script src="chart.min.js"></script>
     <style>
         .sidebar-item:hover {
             background-color: #f3f4f6;
@@ -41,19 +41,19 @@
     <div id="loginPage" class="min-h-screen flex items-center justify-center">
         <div class="max-w-md w-full space-y-8 p-8">
             <div class="text-center">
-                <h2 class="text-3xl font-bold text-gray-900">管理后台登录</h2>
-                <p class="mt-2 text-gray-600">社区小饭桌管理系统</p>
+                <h2 class="text-3xl font-bold text-gray-900">董老师小厨房管理后台</h2>
+                <p class="mt-2 text-gray-600">董老师小厨房管理系统</p>
             </div>
-            <form id="loginForm" class="mt-8 space-y-6">
+            <form id="loginForm" class="mt-8 space-y-6" onsubmit="handleLogin(event)">
                 <div>
                     <label for="username" class="block text-sm font-medium text-gray-700">用户名</label>
                     <input id="username" name="username" type="text" required 
-                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" value="admin">
                 </div>
                 <div>
                     <label for="password" class="block text-sm font-medium text-gray-700">密码</label>
                     <input id="password" name="password" type="password" required 
-                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" value="admin123">
                 </div>
                 <button type="submit" 
                         class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
@@ -64,6 +64,58 @@
             <div id="loginError" class="hidden mt-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded"></div>
         </div>
     </div>
+    <!-- 内嵌登录脚本：不依赖 admin.js，避开缓存问题 -->
+    <script>
+    async function handleLogin(e) {
+        e.preventDefault();
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value.trim();
+        const errEl = document.getElementById('loginError');
+        const loginText = document.getElementById('loginText');
+        const loginLoading = document.getElementById('loginLoading');
+
+        if (!username || !password) {
+            errEl.textContent = '请输入用户名和密码';
+            errEl.classList.remove('hidden');
+            return;
+        }
+
+        // 显示加载状态
+        loginText.classList.add('hidden');
+        loginLoading.classList.remove('hidden');
+        errEl.classList.add('hidden');
+
+        try {
+            const res = await fetch('http://localhost:3001/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await res.json();
+            if (data.success) {
+                localStorage.setItem('adminToken', data.data.token);
+                localStorage.setItem('adminInfo', JSON.stringify(data.data.admin || {}));
+                // 登录成功：隐藏登录页，显示主界面
+                document.getElementById('loginPage').classList.add('hidden');
+                document.getElementById('mainApp').classList.remove('hidden');
+                // 如果 adminApp 已初始化，调用其方法
+                if (window.adminApp) {
+                    window.adminApp.token = data.data.token;
+                    window.adminApp.loadDashboard();
+                }
+            } else {
+                errEl.textContent = data.message || '用户名或密码错误';
+                errEl.classList.remove('hidden');
+            }
+        } catch (err) {
+            errEl.textContent = '登录失败：' + err.message;
+            errEl.classList.remove('hidden');
+        } finally {
+            loginText.classList.remove('hidden');
+            loginLoading.classList.add('hidden');
+        }
+    }
+    </script>
 
     <!-- 主界面 -->
     <div id="mainApp" class="hidden">
@@ -72,7 +124,7 @@
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between h-16">
                     <div class="flex items-center">
-                        <h1 class="text-xl font-semibold text-gray-900">🍽️ 社区小饭桌管理后台</h1>
+                        <h1 class="text-xl font-semibold text-gray-900">🍽️ 董老师小厨房管理后台</h1>
                     </div>
                     <div class="flex items-center space-x-4">
                         <span id="adminName" class="text-gray-700"></span>
@@ -93,13 +145,29 @@
                             <i data-lucide="bar-chart-3" class="mr-3 h-5 w-5"></i>
                             仪表板
                         </a>
+                        <a href="#" class="sidebar-item flex items-center px-4 py-2 text-sm font-medium rounded-md" data-page="dailyMenu">
+                            <i data-lucide="calendar" class="mr-3 h-5 w-5"></i>
+                            每日菜单
+                        </a>
                         <a href="#" class="sidebar-item flex items-center px-4 py-2 text-sm font-medium rounded-md" data-page="orders">
                             <i data-lucide="shopping-bag" class="mr-3 h-5 w-5"></i>
                             订单管理
                         </a>
+                        <a href="#" class="sidebar-item flex items-center px-4 py-2 text-sm font-medium rounded-md" data-page="students">
+                            <i data-lucide="users" class="mr-3 h-5 w-5"></i>
+                            学生管理
+                        </a>
+                        <a href="#" class="sidebar-item flex items-center px-4 py-2 text-sm font-medium rounded-md" data-page="users">
+                            <i data-lucide="contact" class="mr-3 h-5 w-5"></i>
+                            用户管理
+                        </a>
                         <a href="#" class="sidebar-item flex items-center px-4 py-2 text-sm font-medium rounded-md" data-page="menu">
                             <i data-lucide="utensils" class="mr-3 h-5 w-5"></i>
                             菜品管理
+                        </a>
+                        <a href="#" class="sidebar-item flex items-center px-4 py-2 text-sm font-medium rounded-md" data-page="logs">
+                            <i data-lucide="history" class="mr-3 h-5 w-5"></i>
+                            登录日志
                         </a>
                         <a href="#" class="sidebar-item flex items-center px-4 py-2 text-sm font-medium rounded-md" data-page="reports">
                             <i data-lucide="file-text" class="mr-3 h-5 w-5"></i>
@@ -116,7 +184,7 @@
                     <h2 class="text-2xl font-bold text-gray-900 mb-6">仪表板</h2>
                     
                     <!-- 统计卡片 -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8">
                         <div class="card">
                             <div class="flex items-center">
                                 <div class="p-2 bg-blue-100 rounded-lg">
@@ -152,6 +220,17 @@
                         </div>
                         <div class="card">
                             <div class="flex items-center">
+                                <div class="p-2 bg-pink-100 rounded-lg">
+                                    <i data-lucide="users" class="h-6 w-6 text-pink-600"></i>
+                                </div>
+                                <div class="ml-4">
+                                    <p class="text-sm font-medium text-gray-600">学生总数</p>
+                                    <p id="totalStudentsCount" class="text-2xl font-semibold text-gray-900">0</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="flex items-center">
                                 <div class="p-2 bg-purple-100 rounded-lg">
                                     <i data-lucide="utensils" class="h-6 w-6 text-purple-600"></i>
                                 </div>
@@ -164,7 +243,7 @@
                     </div>
 
                     <!-- 图表和最近订单 -->
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                         <div class="card">
                             <h3 class="text-lg font-medium text-gray-900 mb-4">订单趋势</h3>
                             <canvas id="ordersChart" width="400" height="200"></canvas>
@@ -176,6 +255,26 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- 当日订单配餐指示 -->
+                    <div class="card">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">👨‍🍳 今日后厨配餐指示 (当日订餐明细)</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div class="bg-blue-50 p-4 rounded-lg">
+                                <h4 class="text-sm font-semibold text-blue-800 mb-3">订单配送状态分布</h4>
+                                <div id="todayStatusStats" class="space-y-2 text-sm text-gray-700">
+                                    <!-- 动态渲染 -->
+                                </div>
+                            </div>
+                            <div class="bg-green-50 p-4 rounded-lg">
+                                <h4 class="text-sm font-semibold text-green-800 mb-3">今日急需制作的菜品汇总</h4>
+                                <div id="todayDishStats" class="space-y-2 text-sm text-gray-700 max-h-60 overflow-y-auto">
+                                    <!-- 动态渲染 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 </div>
 
                 <!-- 订单管理页面 -->
@@ -202,6 +301,109 @@
                     <div class="card">
                         <div id="ordersTable">
                             <!-- 订单表格将在这里动态生成 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 每日菜单页面 -->
+                <div id="dailyMenuPage" class="page hidden">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-gray-900">每日菜单发布</h2>
+                        <div class="flex space-x-4 items-center">
+                            <label class="text-sm font-medium text-gray-700">发布日期：</label>
+                            <input type="date" id="dailyMenuDateSelector" class="px-3 py-2 border border-gray-300 rounded-md">
+                            <button id="saveDailyMenuBtn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                                保存并发布
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div class="card">
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">📦 选择本日提供的菜品</h3>
+                            <div id="dailyMenuDishesSelector" class="space-y-4 max-h-[500px] overflow-y-auto pr-2">
+                                <!-- 菜品复选框列表将动态载入 -->
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">📋 菜单状态与预览</h3>
+                            <div class="space-y-6">
+                                <div class="bg-gray-50 p-4 rounded-lg">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="text-sm text-gray-600 font-medium">发布状态：</span>
+                                        <span id="dailyMenuStatusBadge" class="px-2.5 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">未发布</span>
+                                    </div>
+                                    <p class="text-xs text-gray-500">保存后，学生客户端在此日期将仅能预订已选中的菜品。</p>
+                                </div>
+                                
+                                <div class="border-t pt-4">
+                                    <h4 class="text-sm font-semibold text-gray-800 mb-3">当前选中预览：</h4>
+                                    <div id="dailyMenuPreviewList" class="space-y-2 max-h-[300px] overflow-y-auto">
+                                        <!-- 预览列表 -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 用户管理页面 -->
+                <div id="usersPage" class="page hidden">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-gray-900">家长用户管理</h2>
+                        <button id="addUserBtn" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                            添加家长用户
+                        </button>
+                    </div>
+                    <div class="card">
+                        <div id="usersTable">
+                            <!-- 用户表格将在这里动态生成 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 登录日志页面 -->
+                <div id="logsPage" class="page hidden">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-6">系统登录日志</h2>
+                    <div class="card">
+                        <div id="logsTable">
+                            <!-- 登录日志表格将在这里动态生成 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 学生管理页面 -->
+                <div id="studentsPage" class="page hidden">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-gray-900">学生管理</h2>
+                        <div class="flex space-x-2">
+                            <input type="file" id="importExcelInput" class="hidden" accept=".xlsx,.xls">
+                            <button id="downloadTemplateBtn" class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700">
+                                下载模板
+                            </button>
+                            <button id="importExcelBtn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                                导入Excel
+                            </button>
+                            <button id="addStudentBtn" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                                添加学生
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 筛选栏 -->
+                    <div class="card mb-6">
+                        <div class="flex space-x-4">
+                            <input type="text" id="studentSearchInput" placeholder="按姓名或手机号搜索" class="flex-1 px-3 py-2 border border-gray-300 rounded-md">
+                            <input type="text" id="studentClassFilter" placeholder="按班级筛选 (如 4年2班)" class="flex-1 px-3 py-2 border border-gray-300 rounded-md">
+                            <input type="text" id="studentGuardianFilter" placeholder="按负责人筛选" class="flex-1 px-3 py-2 border border-gray-300 rounded-md">
+                            <button id="searchStudentBtn" class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700">搜索</button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div id="studentsTable">
+                            <!-- 学生表格将在这里动态生成 -->
                         </div>
                     </div>
                 </div>
@@ -244,41 +446,45 @@
         </div>
     </div>
 
-    <!-- 添加菜品模态框 -->
-    <div id="addMenuModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden">
+    <!-- 菜品模态框 -->
+    <div id="addMenuModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
         <div class="flex items-center justify-center min-h-screen">
             <div class="bg-white rounded-lg p-6 w-full max-w-md">
-                <h3 class="text-lg font-medium text-gray-900 mb-4">添加菜品</h3>
+                <h3 class="text-lg font-medium text-gray-900 mb-4" id="menuModalTitle">添加菜品</h3>
                 <form id="addMenuForm">
+                    <input type="hidden" id="menuItemId" name="id">
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">菜品名称</label>
-                            <input type="text" name="name" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                            <label class="block text-sm font-medium text-gray-700">菜品名称 *</label>
+                            <input type="text" id="menuItemName" name="name" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">分类</label>
-                            <select name="category" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
-                                <option value="main">主菜</option>
-                                <option value="dessert">甜点</option>
-                                <option value="fruit">水果</option>
-                                <option value="drink">饮品</option>
+                            <label class="block text-sm font-medium text-gray-700">分类 *</label>
+                            <select id="menuItemCategory" name="category" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                                <option value="meat">荤菜</option>
+                                <option value="veggie">素菜</option>
+                                <option value="dessert_fruit">甜点/水果</option>
+                                <option value="soup">汤</option>
+                                <option value="staple">主食</option>
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">价格</label>
-                            <input type="number" name="price" step="0.01" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                            <label class="block text-sm font-medium text-gray-700">价格 *</label>
+                            <input type="number" id="menuItemPrice" name="price" step="0.01" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700">描述</label>
-                            <textarea name="description" rows="3" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
+                            <textarea id="menuItemDescription" name="description" rows="2" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700">营养信息</label>
-                            <input type="text" name="nutrition" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                            <input type="text" id="menuItemNutrition" name="nutrition" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">图片URL</label>
-                            <input type="url" name="image" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                            <label class="block text-sm font-medium text-gray-700">图片上传</label>
+                            <input type="file" id="menuImageFile" accept="image/*" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                            <span class="text-xs text-gray-500">或直接输入图片URL：</span>
+                            <input type="url" id="menuItemImageUrl" name="image" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
                         </div>
                     </div>
                     <div class="mt-6 flex justify-end space-x-3">
@@ -286,7 +492,7 @@
                             取消
                         </button>
                         <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
-                            添加
+                            保存
                         </button>
                     </div>
                 </form>
@@ -294,6 +500,98 @@
         </div>
     </div>
 
-    <script src="admin.js"></script>
+    <!-- 添加/编辑学生模态框 -->
+    <div id="addStudentModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen">
+            <div class="bg-white rounded-lg p-6 w-full max-w-md">
+                <h3 class="text-lg font-medium text-gray-900 mb-4" id="studentModalTitle">添加学生</h3>
+                <form id="addStudentForm">
+                    <input type="hidden" id="studentId" name="id">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">姓名 *</label>
+                            <input type="text" id="studentName" name="name" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">学校/年级班级 *</label>
+                            <input type="text" id="studentClass" name="class" required placeholder="如：榆林路校区4年2班" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">负责人</label>
+                            <input type="text" id="studentGuardian" name="guardian" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">手机号 *</label>
+                            <input type="tel" id="studentPhone" name="phone" required pattern="1[3-9]\d{9}" placeholder="11位手机号" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">首次订餐日</label>
+                            <input type="date" id="studentFirstOrderDate" name="firstOrderDate" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                        </div>
+                    </div>
+                    <div class="mt-6 flex justify-end space-x-3">
+                        <button type="button" id="cancelAddStudent" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                            取消
+                        </button>
+                        <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                            保存
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 家长用户模态框 -->
+    <div id="userModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen">
+            <div class="bg-white rounded-lg p-6 w-full max-w-md">
+                <h3 class="text-lg font-medium text-gray-900 mb-4" id="userModalTitle">添加家长用户</h3>
+                <form id="userForm">
+                    <input type="hidden" id="userId" name="id">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">手机号 *</label>
+                            <input type="tel" id="userPhone" name="phone" required pattern="1[3-9]\d{9}" placeholder="11位手机号" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">家长姓名 *</label>
+                            <input type="text" id="userNameInput" name="name" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                        </div>
+                    </div>
+                    <div class="mt-6 flex justify-end space-x-3">
+                        <button type="button" id="cancelUserBtn" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                            取消
+                        </button>
+                        <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                            保存
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 订单打印小票模态框 -->
+    <div id="printSlipModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen">
+            <div class="bg-white rounded-lg p-6 w-full max-w-sm">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4 text-center">🧾 订单配送小票预览</h3>
+                <div id="printSlipContent" class="border p-4 font-mono text-xs bg-yellow-50 text-gray-800 rounded leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto">
+                    <!-- 小票文本 -->
+                </div>
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button type="button" id="closePrintSlip" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                        关闭
+                    </button>
+                    <button type="button" id="printSlipBtn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                        🖨️ 打印小票
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js?v=20260520"></script>
 </body>
 </html>

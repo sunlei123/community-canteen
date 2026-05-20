@@ -1,9 +1,10 @@
 // 菜品类型枚举
 export enum FoodCategory {
-  MAIN = 'main',
-  DESSERT = 'dessert', 
-  FRUIT = 'fruit',
-  DRINK = 'drink'
+  MEAT = 'meat',
+  VEGGIE = 'veggie',
+  DESSERT_FRUIT = 'dessert_fruit',
+  SOUP = 'soup',
+  STAPLE = 'staple'
 }
 
 // 用餐时段枚举

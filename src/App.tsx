@@ -6,6 +6,7 @@ import Menu from './pages/Menu';
 import Cart from './pages/Cart';
 import Order from './pages/Order';
 import Success from './pages/Success';
+import Login from './pages/Login';
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
           <Route path="/cart" element={<Cart />} />
           <Route path="/order" element={<Order />} />
           <Route path="/success" element={<Success />} />
+          <Route path="/login" element={<Login />} />
         </Routes>
         
         {/* 全局通知组件 */}
