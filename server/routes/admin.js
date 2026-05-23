@@ -2,6 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import bcrypt from 'bcryptjs';
 import { db } from '../data/database.js';
 import { authenticateToken } from '../middleware/auth.js';
 
@@ -35,6 +36,29 @@ const router = express.Router();
 
 // 所有管理员路由都需要身份验证
 router.use(authenticateToken);
+
+// 获取系统配置
+router.get('/settings', (req, res) => {
+  try {
+    const settings = db.getSettings();
+    res.json({ success: true, data: settings });
+  } catch (error) {
+    console.error('获取系统配置失败:', error);
+    res.status(500).json({ success: false, message: '获取配置失败' });
+  }
+});
+
+// 更新系统配置
+router.post('/settings', (req, res) => {
+  try {
+    const newSettings = req.body;
+    const updated = db.updateSettings(newSettings);
+    res.json({ success: true, data: updated, message: '配置已更新' });
+  } catch (error) {
+    console.error('更新系统配置失败:', error);
+    res.status(500).json({ success: false, message: '更新配置失败' });
+  }
+});
 
 // 获取仪表板数据
 router.get('/dashboard', (req, res) => {
@@ -97,6 +121,24 @@ router.get('/dashboard', (req, res) => {
       dishes: todayDishQuantities
     };
     
+    // 菜品按分类统计数量
+    const categoryDistribution = menuItems.reduce((acc, item) => {
+      acc[item.category] = (acc[item.category] || 0) + 1;
+      return acc;
+    }, { meat: 0, veggie: 0, dessert_fruit: 0, soup: 0, staple: 0 });
+
+    // 获取今日发布的供应菜品
+    const todayISO = new Date();
+    const offset = todayISO.getTimezoneOffset();
+    const localToday = new Date(todayISO.getTime() - (offset * 60 * 1000));
+    const todayDateStr = localToday.toISOString().split('T')[0];
+    
+    const todayDailyMenu = db.getDailyMenuByDate(todayDateStr);
+    let todayDishes = [];
+    if (todayDailyMenu && todayDailyMenu.published) {
+      todayDishes = menuItems.filter(item => todayDailyMenu.dishes.includes(item.id));
+    }
+
     const dashboardData = {
       statistics: {
         ...statistics,
@@ -106,10 +148,12 @@ router.get('/dashboard', (req, res) => {
       recentOrders,
       statusDistribution,
       dailyOrders,
+      todayDishes, // 新增今日发布菜品列表
       menuStats: {
         total: menuItems.length,
         available: menuItems.filter(item => item.available).length,
-        unavailable: menuItems.filter(item => !item.available).length
+        unavailable: menuItems.filter(item => !item.available).length,
+        categoryStats: categoryDistribution
       }
     };
     
@@ -226,8 +270,9 @@ router.delete('/menu/:id', (req, res) => {
 // 获取所有订单（管理员视图）
 router.get('/orders', (req, res) => {
   try {
-    const { status, date, page = 1, limit = 20 } = req.query;
+    const { status, date, startDate, endDate, studentName, studentPhone, studentClass, page = 1, limit = 20 } = req.query;
     let orders = db.getOrders();
+    const allStudents = db.getStudents();
     
     // 筛选
     if (status) {
@@ -239,6 +284,39 @@ router.get('/orders', (req, res) => {
         new Date(order.createdAt).toDateString() === new Date(date).toDateString()
       );
     }
+
+    if (startDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      orders = orders.filter(order => new Date(order.createdAt) >= start);
+    }
+
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      orders = orders.filter(order => new Date(order.createdAt) <= end);
+    }
+
+    // 模糊匹配筛选 (学生姓名、手机号、学校班级)
+    if (studentName || studentPhone || studentClass) {
+      orders = orders.filter(order => {
+        const student = allStudents.find(s => s.id === order.studentId);
+        
+        // 姓名匹配 (忽略大小写)
+        const sName = student ? student.name : (order.address ? order.address.split(' ')[0] : '未知');
+        const matchName = !studentName || sName.toLowerCase().includes(studentName.trim().toLowerCase());
+        
+        // 手机号匹配
+        const sPhone = student ? student.phone : (order.address?.match(/1[3-9]\d{9}/)?.[0] || '');
+        const matchPhone = !studentPhone || sPhone.includes(studentPhone.trim());
+        
+        // 学校班级匹配 (忽略大小写)
+        const sClass = student ? student.class : '';
+        const matchClass = !studentClass || sClass.toLowerCase().includes(studentClass.trim().toLowerCase());
+        
+        return matchName && matchPhone && matchClass;
+      });
+    }
     
     // 排序
     orders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -248,9 +326,21 @@ router.get('/orders', (req, res) => {
     const endIndex = startIndex + parseInt(limit);
     const paginatedOrders = orders.slice(startIndex, endIndex);
     
+    // 增强关联查询以拼接学生姓名及档案详情
+    const paginatedOrdersWithStudent = paginatedOrders.map(order => {
+      const student = allStudents.find(s => s.id === order.studentId);
+      return {
+        ...order,
+        studentName: student ? student.name : (order.address ? order.address.split(' ')[0] : '未知'),
+        studentClass: student ? student.class : '',
+        studentGuardian: student ? student.guardian : '',
+        studentPhone: student ? student.phone : ''
+      };
+    });
+    
     res.json({
       success: true,
-      data: paginatedOrders,
+      data: paginatedOrdersWithStudent,
       pagination: {
         current: parseInt(page),
         pageSize: parseInt(limit),
@@ -528,6 +618,56 @@ router.delete('/users/:id', (req, res) => {
   }
 });
 
+// 重置家长密码
+router.post('/users/:id/reset-password', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { password } = req.body;
+    
+    // 如果留空或只有空格，默认重置为 123456
+    const newPassword = password && password.trim() ? password.trim() : '123456';
+    
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: '密码长度至少为6位'
+      });
+    }
+
+    const user = db.getUserById(id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: '用户不存在'
+      });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    const updatedUser = db.updateUser(id, {
+      password: hashedPassword
+    });
+
+    res.json({
+      success: true,
+      message: '成功重置密码',
+      data: {
+        id: updatedUser.id,
+        phone: updatedUser.phone,
+        name: updatedUser.name,
+        newPassword: newPassword
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '重置密码失败',
+      error: error.message
+    });
+  }
+});
+
 // ==================== 登录日志管理 (Login Logs) ====================
 // 获取登录日志
 router.get('/logs', (req, res) => {
@@ -574,7 +714,7 @@ router.get('/daily-menus', (req, res) => {
 });
 
 // 保存/发布每日菜单
-router.post('/daily-menus', (req, res) => {
+router.post('/daily-menus', async (req, res) => {
   try {
     const { date, dishes, published } = req.body;
     if (!date || !dishes || !Array.isArray(dishes)) {
@@ -583,7 +723,7 @@ router.post('/daily-menus', (req, res) => {
         message: '日期和菜品列表不能为空'
       });
     }
-    const savedMenu = db.saveDailyMenu(date, dishes, published !== false);
+    const savedMenu = await db.saveDailyMenu(date, dishes, published !== false);
     res.json({
       success: true,
       message: '每日菜单保存成功',
@@ -599,10 +739,10 @@ router.post('/daily-menus', (req, res) => {
 });
 
 // 删除每日菜单
-router.delete('/daily-menus/:id', (req, res) => {
+router.delete('/daily-menus/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const deletedMenu = db.deleteDailyMenu(id);
+    const deletedMenu = await db.deleteDailyMenu(id);
     if (!deletedMenu) {
       return res.status(404).json({
         success: false,
@@ -618,6 +758,154 @@ router.delete('/daily-menus/:id', (req, res) => {
     res.status(500).json({
       success: false,
       message: '删除每日菜单失败',
+      error: error.message
+    });
+  }
+});
+
+// ==================== 系统用户管理 (System Admins Crud) ====================
+
+// 获取所有系统管理员
+router.get('/admins', (req, res) => {
+  try {
+    const admins = db.getAdmins();
+    // 安全起见，隐藏密码字段以防透传
+    const safeAdmins = admins.map(({ password, ...adminInfo }) => adminInfo);
+    res.json({
+      success: true,
+      data: safeAdmins
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '获取系统用户列表失败',
+      error: error.message
+    });
+  }
+});
+
+// 添加系统管理员
+router.post('/admins', async (req, res) => {
+  try {
+    const { username, password, name, role, email } = req.body;
+    
+    if (!username || !password || !name || !role) {
+      return res.status(400).json({
+        success: false,
+        message: '账号、密码、姓名和角色为必填项'
+      });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const newAdmin = db.addAdmin({
+      username: username.trim(),
+      password: hashedPassword,
+      name: name.trim(),
+      role,
+      email: email || ''
+    });
+
+    const { password: _, ...safeAdmin } = newAdmin;
+    res.status(201).json({
+      success: true,
+      message: '系统用户添加成功',
+      data: safeAdmin
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '添加系统用户失败',
+      error: error.message
+    });
+  }
+});
+
+// 更新系统管理员
+router.put('/admins/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { username, password, name, role, email } = req.body;
+
+    const existingAdmin = db.getAdminById(id);
+    if (!existingAdmin) {
+      return res.status(404).json({
+        success: false,
+        message: '系统用户不存在'
+      });
+    }
+
+    const updates = {
+      username: username ? username.trim() : existingAdmin.username,
+      name: name ? name.trim() : existingAdmin.name,
+      role: role || existingAdmin.role,
+      email: email || existingAdmin.email
+    };
+
+    if (password && password.trim()) {
+      const salt = await bcrypt.genSalt(10);
+      updates.password = await bcrypt.hash(password.trim(), salt);
+    } else {
+      updates.password = existingAdmin.password;
+    }
+
+    const updatedAdmin = db.updateAdmin(id, updates);
+
+    const { password: _, ...safeAdmin } = updatedAdmin;
+    res.json({
+      success: true,
+      message: '系统用户更新成功',
+      data: safeAdmin
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '更新系统用户失败',
+      error: error.message
+    });
+  }
+});
+
+// 删除系统管理员
+router.delete('/admins/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // 安全保护：不能删除自己当前登录的账号
+    if (req.user && req.user.id === id) {
+      return res.status(400).json({
+        success: false,
+        message: '不能删除您当前正在使用的登录账号'
+      });
+    }
+
+    const allAdmins = db.getAdmins();
+    if (allAdmins.length <= 1) {
+      return res.status(400).json({
+        success: false,
+        message: '系统必须保留至少一个管理员账号'
+      });
+    }
+
+    const deletedAdmin = db.deleteAdmin(id);
+    if (!deletedAdmin) {
+      return res.status(404).json({
+        success: false,
+        message: '系统用户不存在'
+      });
+    }
+
+    const { password: _, ...safeAdmin } = deletedAdmin;
+    res.json({
+      success: true,
+      message: '系统用户删除成功',
+      data: safeAdmin
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '删除系统用户失败',
       error: error.message
     });
   }

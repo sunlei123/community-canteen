@@ -1,0 +1,146 @@
+<h2 class="text-2xl font-bold text-gray-900 mb-6">仪表板</h2>
+
+<!-- 统计卡片 -->
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6 mb-8">
+    <div class="card">
+        <div class="flex items-center">
+            <div class="p-2 bg-blue-100 rounded-lg">
+                <i data-lucide="shopping-bag" class="h-6 w-6 text-blue-600"></i>
+            </div>
+            <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600">今日订单</p>
+                <p id="todayOrders" class="text-2xl font-semibold text-gray-900">0</p>
+            </div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="flex items-center">
+            <div class="p-2 bg-green-100 rounded-lg">
+                <i data-lucide="dollar-sign" class="h-6 w-6 text-green-600"></i>
+            </div>
+            <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600">今日营收</p>
+                <p id="todayRevenue" class="text-2xl font-semibold text-gray-900">¥0</p>
+            </div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="flex items-center">
+            <div class="p-2 bg-yellow-100 rounded-lg">
+                <i data-lucide="clock" class="h-6 w-6 text-yellow-600"></i>
+            </div>
+            <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600">待处理订单</p>
+                <p id="pendingOrders" class="text-2xl font-semibold text-gray-900">0</p>
+            </div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="flex items-center">
+            <div class="p-2 bg-pink-100 rounded-lg">
+                <i data-lucide="users" class="h-6 w-6 text-pink-600"></i>
+            </div>
+            <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600">学生总数</p>
+                <p id="totalStudentsCount" class="text-2xl font-semibold text-gray-900">0</p>
+            </div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="flex items-center">
+            <div class="p-2 bg-purple-100 rounded-lg">
+                <i data-lucide="utensils" class="h-6 w-6 text-purple-600"></i>
+            </div>
+            <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600">菜品总数</p>
+                <p id="totalMenuItems" class="text-2xl font-semibold text-gray-900">0</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 图表和最近订单 -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+    <div class="card">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">订单趋势</h3>
+        <canvas id="ordersChart" width="400" height="200"></canvas>
+    </div>
+    <div class="card">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">最近订单</h3>
+        <div id="recentOrders" class="space-y-3">
+            <!-- 订单列表将在这里动态生成 -->
+        </div>
+    </div>
+</div>
+
+<!-- 菜品分类统计 -->
+<div class="card mb-8">
+    <h3 class="text-lg font-medium text-gray-900 mb-4">📊 菜品分类数量统计</h3>
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div class="p-4 bg-orange-55/40 hover:bg-orange-50 border border-orange-100 rounded-xl flex items-center justify-between shadow-sm transition-all duration-200 hover:shadow">
+            <div>
+                <span class="text-xs text-orange-600 font-bold block mb-1">荤菜数量</span>
+                <span id="categoryCountMeat" class="text-2xl font-black text-gray-800 font-mono">0</span>
+            </div>
+            <span class="text-3xl filter drop-shadow">🍖</span>
+        </div>
+        <div class="p-4 bg-green-55/40 hover:bg-green-50 border border-green-100 rounded-xl flex items-center justify-between shadow-sm transition-all duration-200 hover:shadow">
+            <div>
+                <span class="text-xs text-green-600 font-bold block mb-1">素菜数量</span>
+                <span id="categoryCountVeggie" class="text-2xl font-black text-gray-800 font-mono">0</span>
+            </div>
+            <span class="text-3xl filter drop-shadow">🥦</span>
+        </div>
+        <div class="p-4 bg-amber-55/40 hover:bg-amber-50 border border-amber-100 rounded-xl flex items-center justify-between shadow-sm transition-all duration-200 hover:shadow">
+            <div>
+                <span class="text-xs text-amber-600 font-bold block mb-1">甜点/水果</span>
+                <span id="categoryCountDessert" class="text-2xl font-black text-gray-800 font-mono">0</span>
+            </div>
+            <span class="text-3xl filter drop-shadow">🍰</span>
+        </div>
+        <div class="p-4 bg-blue-55/40 hover:bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-between shadow-sm transition-all duration-200 hover:shadow">
+            <div>
+                <span class="text-xs text-blue-600 font-bold block mb-1">汤品数量</span>
+                <span id="categoryCountSoup" class="text-2xl font-black text-gray-800 font-mono">0</span>
+            </div>
+            <span class="text-3xl filter drop-shadow">🥣</span>
+        </div>
+        <div class="p-4 bg-purple-55/40 hover:bg-purple-50 border border-purple-100 rounded-xl flex items-center justify-between shadow-sm transition-all duration-200 hover:shadow">
+            <div>
+                <span class="text-xs text-purple-600 font-bold block mb-1">主食数量</span>
+                <span id="categoryCountStaple" class="text-2xl font-black text-gray-800 font-mono">0</span>
+            </div>
+            <span class="text-3xl filter drop-shadow">🍚</span>
+        </div>
+    </div>
+</div>
+
+<!-- 今日供应菜品列表 -->
+<div class="card mb-8">
+    <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center gap-1.5">
+        <span>📅</span>
+        <span>今日发布供应的菜品</span>
+    </h3>
+    <div id="todayDishesList" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        <!-- 动态渲染今日发布的菜品列表卡片 -->
+    </div>
+</div>
+
+<!-- 当日订单配餐指示 -->
+<div class="card">
+    <h3 class="text-lg font-medium text-gray-900 mb-4">👨‍🍳 今日后厨配餐指示 (当日订餐明细)</h3>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+        <div class="bg-blue-50 p-4 rounded-lg">
+            <h4 class="text-sm font-semibold text-blue-800 mb-3">订单配送状态分布</h4>
+            <div id="todayStatusStats" class="space-y-2 text-sm text-gray-700">
+                <!-- 动态渲染 -->
+            </div>
+        </div>
+        <div class="bg-green-50 p-4 rounded-lg">
+            <h4 class="text-sm font-semibold text-green-800 mb-3">今日急需制作的菜品汇总</h4>
+            <div id="todayDishStats" class="space-y-2 text-sm text-gray-700 max-h-60 overflow-y-auto">
+                <!-- 动态渲染 -->
+            </div>
+        </div>
+    </div>
+</div>

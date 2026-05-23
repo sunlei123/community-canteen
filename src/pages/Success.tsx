@@ -63,9 +63,9 @@ const Success: React.FC = () => {
     navigate('/');
   };
 
-  const handleOrderAgain = () => {
+  const handleViewOrders = () => {
     clearOrder();
-    navigate('/menu');
+    navigate('/my-orders');
   };
 
   if (!currentOrder) {
@@ -195,11 +195,11 @@ const Success: React.FC = () => {
               {/* 操作按钮 */}
               <div className="space-y-3 pt-4">
                 <Button
-                  onClick={handleOrderAgain}
+                  onClick={handleViewOrders}
                   className="w-full"
                   size="lg"
                 >
-                  再来一单 🍽️
+                  查看我的订单 📋
                 </Button>
                 
                 <Button

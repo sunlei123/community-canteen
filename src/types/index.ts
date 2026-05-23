@@ -41,6 +41,9 @@ export interface Order {
   address: string;
   createdAt: Date;
   status: 'pending' | 'preparing' | 'completed';
+  customerInfo?: {
+    note?: string;
+  };
 }
 
 // 地址接口

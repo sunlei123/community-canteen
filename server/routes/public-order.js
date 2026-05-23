@@ -3,6 +3,20 @@ import { db } from '../data/database.js';
 
 const router = express.Router();
 
+// 获取系统配置（公共接口，无需登录）
+router.get('/settings', (req, res) => {
+  try {
+    const settings = db.getSettings();
+    res.json({
+      success: true,
+      data: settings
+    });
+  } catch (error) {
+    console.error('获取系统配置失败:', error);
+    res.status(500).json({ success: false, message: '获取配置失败' });
+  }
+});
+
 // 获取今日已发布的菜单（公共接口，无需登录）
 router.get('/today-menu', (req, res) => {
   try {

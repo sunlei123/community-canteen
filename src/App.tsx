@@ -7,6 +7,9 @@ import Cart from './pages/Cart';
 import Order from './pages/Order';
 import Success from './pages/Success';
 import Login from './pages/Login';
+import MyOrders from './pages/MyOrders';
+import Verify from './pages/Verify';
+import AddStudent from './pages/AddStudent';
 
 function App() {
   return (
@@ -19,6 +22,9 @@ function App() {
           <Route path="/order" element={<Order />} />
           <Route path="/success" element={<Success />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/my-orders" element={<MyOrders />} />
+          <Route path="/verify" element={<Verify />} />
+          <Route path="/add-student" element={<AddStudent />} />
         </Routes>
         
         {/* 全局通知组件 */}

@@ -1,6 +1,57 @@
 import express from 'express';
 import { db } from '../data/database.js';
 
+// 最优折扣套餐计算
+const calculateOptimalComboPrice = (
+  meatPrices,
+  veggiePrices,
+  staplePrices,
+  soupPrices
+) => {
+  const sortedMeats = [...meatPrices].sort((a, b) => b - a);
+  const sortedVeggies = [...veggiePrices].sort((a, b) => b - a);
+  const sortedStaples = [...staplePrices].sort((a, b) => b - a);
+  const sortedSoups = [...soupPrices].sort((a, b) => b - a);
+
+  const memo = {};
+
+  const getMinPrice = (
+    mCount,
+    vCount,
+    sCount,
+    spCount
+  ) => {
+    const key = `${mCount},${vCount},${sCount},${spCount}`;
+    if (key in memo) return memo[key];
+
+    let minPrice = 0;
+    for (let i = sortedMeats.length - mCount; i < sortedMeats.length; i++) minPrice += sortedMeats[i];
+    for (let i = sortedVeggies.length - vCount; i < sortedVeggies.length; i++) minPrice += sortedVeggies[i];
+    for (let i = sortedStaples.length - sCount; i < sortedStaples.length; i++) minPrice += sortedStaples[i];
+    for (let i = sortedSoups.length - spCount; i < sortedSoups.length; i++) minPrice += sortedSoups[i];
+
+    if (mCount >= 3 && sCount >= 1 && spCount >= 1) {
+      const price = 20 + getMinPrice(mCount - 3, vCount, sCount - 1, spCount - 1);
+      if (price < minPrice) minPrice = price;
+    }
+
+    if (mCount >= 2 && vCount >= 1 && sCount >= 1 && spCount >= 1) {
+      const price = 17 + getMinPrice(mCount - 2, vCount - 1, sCount - 1, spCount - 1);
+      if (price < minPrice) minPrice = price;
+    }
+
+    if (mCount >= 1 && vCount >= 2 && sCount >= 1 && spCount >= 1) {
+      const price = 15 + getMinPrice(mCount - 1, vCount - 2, sCount - 1, spCount - 1);
+      if (price < minPrice) minPrice = price;
+    }
+
+    memo[key] = minPrice;
+    return minPrice;
+  };
+
+  return getMinPrice(sortedMeats.length, sortedVeggies.length, sortedStaples.length, sortedSoups.length);
+};
+
 const router = express.Router();
 
 // 创建订单
@@ -29,9 +80,29 @@ router.post('/', (req, res) => {
         message: '请选择订餐学生'
       });
     }
-    
-    // 计算总价
+
+    // 每天每个学生仅允许下一单（按配送日期 deliveryDate 判断）
+    const allOrders = db.getOrders();
+    const existingOrder = allOrders.find(o =>
+      o.studentId === studentId &&
+      o.deliveryDate === deliveryDate &&
+      o.status !== 'cancelled'
+    );
+    if (existingOrder) {
+      return res.status(409).json({
+        success: false,
+        message: `该学生当天已经订餐（订单号：${existingOrder.orderNumber}），每天每人仅允许下一单哦 🍱`,
+        code: 'DUPLICATE_ORDER'
+      });
+    }
+
     let calculatedTotalPrice = 0;
+    const meatPrices = [];
+    const veggiePrices = [];
+    const staplePrices = [];
+    const soupPrices = [];
+    let dessertTotal = 0;
+
     const orderItems = items.map(item => {
       const menuItem = db.getMenuItemById(item.foodId || item.id);
       if (!menuItem) {
@@ -41,21 +112,41 @@ router.post('/', (req, res) => {
         throw new Error(`菜品 ${menuItem.name} 暂时不可用`);
       }
       
-      const itemTotal = (item.price || menuItem.price) * item.quantity;
-      calculatedTotalPrice += itemTotal;
+      const itemPrice = item.price || menuItem.price;
+      const quantity = item.quantity || 1;
+      const itemTotal = itemPrice * quantity;
+
+      // 按数量展开加入计算数组
+      for (let i = 0; i < quantity; i++) {
+        if (menuItem.category === 'meat') {
+          meatPrices.push(itemPrice);
+        } else if (menuItem.category === 'veggie') {
+          veggiePrices.push(itemPrice);
+        } else if (menuItem.category === 'staple') {
+          staplePrices.push(itemPrice);
+        } else if (menuItem.category === 'soup') {
+          soupPrices.push(itemPrice);
+        } else {
+          dessertTotal += itemPrice;
+        }
+      }
       
       return {
         id: menuItem.id,
         name: menuItem.name,
-        price: item.price || menuItem.price,
-        quantity: item.quantity,
+        price: itemPrice,
+        quantity: quantity,
         image: menuItem.image,
         subtotal: itemTotal
       };
     });
     
-    // 使用前端传递的总价或计算的总价
-    const finalTotalPrice = totalPrice || calculatedTotalPrice;
+    // 计算最优折扣总价
+    const comboPrice = calculateOptimalComboPrice(meatPrices, veggiePrices, staplePrices, soupPrices);
+    calculatedTotalPrice = comboPrice + dessertTotal;
+
+    // 安全强校验：以计算所得的真实最优套餐折抵价为准
+    const finalTotalPrice = calculatedTotalPrice;
     
     // 创建订单
     const order = {
@@ -87,9 +178,28 @@ router.post('/', (req, res) => {
 // 获取订单列表
 router.get('/', (req, res) => {
   try {
-    const { status, date, page = 1, limit = 10 } = req.query;
+    const { status, date, studentId, studentIds, search, page = 1, limit = 10 } = req.query;
     let orders = db.getOrders();
     
+    // 按学生筛选
+    if (studentId) {
+      orders = orders.filter(order => order.studentId === studentId);
+    } else if (studentIds) {
+      const ids = studentIds.split(',');
+      orders = orders.filter(order => ids.includes(order.studentId));
+    }
+
+    // 模糊搜索：匹配订单号、学生姓名或所含菜品名
+    if (search) {
+      const query = search.toLowerCase();
+      orders = orders.filter(order => 
+        order.orderNumber.toLowerCase().includes(query) ||
+        (order.studentName && order.studentName.toLowerCase().includes(query)) ||
+        (order.address && order.address.toLowerCase().includes(query)) ||
+        order.items.some(item => item.name.toLowerCase().includes(query))
+      );
+    }
+
     // 按状态筛选
     if (status) {
       orders = orders.filter(order => order.status === status);
@@ -126,6 +236,31 @@ router.get('/', (req, res) => {
       message: '获取订单列表失败',
       error: error.message
     });
+  }
+});
+
+// 查询指定学生某天是否已订餐（必须放在 /:id 路由之前，防止被动态参数拦截）
+router.get('/check-today', (req, res) => {
+  try {
+    const { studentId, date } = req.query;
+    if (!studentId || !date) {
+      return res.status(400).json({ success: false, message: '缺少参数' });
+    }
+    const allOrders = db.getOrders();
+    const existing = allOrders.find(o =>
+      o.studentId === studentId &&
+      o.deliveryDate === date &&
+      o.status !== 'cancelled'
+    );
+    res.json({
+      success: true,
+      data: {
+        hasOrder: !!existing,
+        order: existing || null
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '查询失败', error: error.message });
   }
 });
 

@@ -1,0 +1,39 @@
+<div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+    <h2 class="text-2xl font-bold text-gray-900">菜品管理</h2>
+    <button id="addMenuItemBtn" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm transition-colors">
+        添加菜品
+    </button>
+</div>
+
+<!-- 菜品搜索筛选栏 (名称 + 分类) -->
+<div class="bg-white rounded-xl border border-gray-200/80 shadow-sm p-4 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 text-sm">
+                🔍
+            </span>
+            <input type="text" id="menuSearchInput" placeholder="输入菜品名称搜索..." class="block w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
+        </div>
+        <div>
+            <select id="menuCategoryFilter" class="block w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
+                <option value="">-- 全部分类 --</option>
+                <option value="meat">🍖 荤菜</option>
+                <option value="veggie">🥦 素菜</option>
+                <option value="staple">🍚 主食</option>
+                <option value="soup">🥣 汤品</option>
+                <option value="dessert_fruit">🍧 甜点/水果</option>
+            </select>
+        </div>
+    </div>
+    <div class="flex-shrink-0 flex items-center gap-2">
+        <button id="resetMenuFilterBtn" class="px-4 py-2 border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl text-sm transition-all duration-200 font-medium focus:outline-none flex items-center gap-1.5 shadow-sm">
+            🔄 重置
+        </button>
+    </div>
+</div>
+
+<div class="card">
+    <div id="menuTable">
+        <!-- 菜品表格将在这里动态生成 -->
+    </div>
+</div>

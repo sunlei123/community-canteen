@@ -1,0 +1,74 @@
+<div class="flex items-center justify-center min-h-screen p-4 animate-in fade-in zoom-in-95 duration-200">
+    <div class="bg-white/95 backdrop-blur-md rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-white/40 transition-all duration-300">
+        <!-- 头部渐变 -->
+        <div class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6 relative">
+            <button type="button" id="cancelAddAdmin" class="absolute right-4 top-4 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 p-1.5 rounded-full transition-all focus:outline-none" title="关闭">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+            <div class="text-3xl mb-1.5">👤</div>
+            <h3 class="text-lg font-bold" id="adminModalTitle">添加系统用户</h3>
+            <p class="text-blue-100 text-xs mt-0.5" id="adminModalSubtitle">请为新的系统运营人员创建登录账号和操作席位。</p>
+        </div>
+        
+        <!-- 表单区域 -->
+        <form id="adminForm" class="p-6 space-y-4">
+            <input type="hidden" id="adminId" name="id">
+            
+            <!-- 账号 -->
+            <div>
+                <label for="adminUsername" class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">登录账号 (用户名) *</label>
+                <input type="text" id="adminUsername" name="username" required 
+                       class="block w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm font-medium" 
+                       placeholder="如：staff_zhang">
+            </div>
+            
+            <!-- 密码 -->
+            <div>
+                <label for="adminPassword" class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5" id="adminPasswordLabel">登录密码 *</label>
+                <input type="password" id="adminPassword" name="password" required 
+                       class="block w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm font-medium" 
+                       placeholder="输入6位以上的安全密码">
+                <p class="text-[10px] text-gray-400 mt-1 hidden" id="adminPasswordHelp">编辑模式下：如果不想修改密码，请将此项保持空白。</p>
+            </div>
+            
+            <!-- 姓名 -->
+            <div>
+                <label for="adminNameInput" class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">真实姓名 *</label>
+                <input type="text" id="adminNameInput" name="name" required 
+                       class="block w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm font-medium" 
+                       placeholder="输入使用者真实姓名">
+            </div>
+            
+            <!-- 角色 -->
+            <div>
+                <label for="adminRole" class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">系统角色权限 *</label>
+                <select id="adminRole" name="role" required 
+                        class="block w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm font-medium">
+                    <option value="admin">系统管理员 (全权管理)</option>
+                    <option value="staff">普通运营 (订单/学生管理)</option>
+                    <option value="kitchen">后厨人员 (菜品/后厨制作)</option>
+                </select>
+            </div>
+            
+            <!-- 邮箱 -->
+            <div>
+                <label for="adminEmail" class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">安全密保邮箱</label>
+                <input type="email" id="adminEmail" name="email" 
+                       class="block w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm font-medium" 
+                       placeholder="如：zhang@example.com">
+            </div>
+            
+            <!-- 按钮组 -->
+            <div class="pt-4 flex items-center justify-end gap-3 border-t">
+                <button type="button" id="cancelAddAdminText" class="px-4 py-2.5 border border-slate-200 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-50 font-semibold text-sm transition-all focus:outline-none">
+                    取消
+                </button>
+                <button type="submit" class="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl shadow-md shadow-blue-500/10 hover:shadow-lg hover:shadow-blue-500/20 font-semibold text-sm transition-all focus:outline-none">
+                    保存设置
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

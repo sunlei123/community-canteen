@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>董老师小厨房 - 登录</title>
+    <script src="/admin/tailwind.min.js"></script>
+    <style>
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-tr from-slate-100 via-blue-50 to-emerald-50 min-h-screen flex items-center justify-center p-4">
+    <!-- 独立的登录卡片 -->
+    <div class="max-w-md w-full glass-card rounded-3xl shadow-2xl p-8 sm:p-10 border border-white/50 transition-all duration-300 hover:shadow-blue-100/50 hover:shadow-3xl">
+        <div class="text-center mb-8">
+            <div class="inline-block p-4 bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-3xl rounded-2xl shadow-lg shadow-blue-500/20 mb-4 animate-bounce duration-[3000ms]">
+                🍽️
+            </div>
+            <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-tight">董老师小厨房</h2>
+            <p class="mt-2 text-sm text-slate-500 font-medium">管理后台控制中心</p>
+        </div>
+        
+        <form id="loginForm" class="space-y-6" onsubmit="handleLogin(event)">
+            <div>
+                <label for="username" class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">管理员账号</label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 text-sm">
+                        👤
+                    </span>
+                    <input id="username" name="username" type="text" required 
+                           class="block w-full pl-10 pr-4 py-3 bg-white/70 border border-slate-200 rounded-2xl shadow-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm font-medium" 
+                           placeholder="输入管理员账号" value="admin">
+                </div>
+            </div>
+            <div>
+                <label for="password" class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">安全密码</label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 text-sm">
+                        🔑
+                    </span>
+                    <input id="password" name="password" type="password" required 
+                           class="block w-full pl-10 pr-4 py-3 bg-white/70 border border-slate-200 rounded-2xl shadow-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm font-medium" 
+                           placeholder="输入登录密码" value="admin123">
+                </div>
+            </div>
+            
+            <button type="submit" 
+                    class="w-full flex justify-center items-center py-3.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-2xl shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-200 font-semibold text-sm focus:outline-none">
+                <span id="loginText">安全登录</span>
+                <span id="loginLoading" class="loading hidden ml-2"></span>
+            </button>
+        </form>
+        
+        <div id="loginError" class="hidden mt-5 p-4 bg-red-50 border border-red-200 text-red-700 text-xs font-medium rounded-2xl shadow-sm flex items-center gap-2">
+            <span>⚠️</span>
+            <span id="errorMsg">登录失败</span>
+        </div>
+    </div>
+
+    <script>
+    // 同步检测：若已登录，直接引导至主控台
+    if (localStorage.getItem('adminToken')) {
+        window.location.href = '/admin/';
+    }
+
+    async function handleLogin(e) {
+        e.preventDefault();
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value.trim();
+        const errEl = document.getElementById('loginError');
+        const errorMsg = document.getElementById('errorMsg');
+        const loginText = document.getElementById('loginText');
+        const loginLoading = document.getElementById('loginLoading');
+
+        if (!username || !password) {
+            errorMsg.textContent = '请输入用户名和密码';
+            errEl.classList.remove('hidden');
+            return;
+        }
+
+        // 显控加载状态
+        loginText.classList.add('hidden');
+        loginLoading.classList.remove('hidden');
+        errEl.classList.add('hidden');
+
+        try {
+            // 支持动态判断API地址
+            const hostname = window.location.hostname;
+            const apiBase = (hostname === 'localhost' || hostname === '127.0.0.1') 
+                ? 'http://localhost:3001/api' 
+                : '/api';
+
+            const res = await fetch(`${apiBase}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await res.json();
+            if (data.success) {
+                localStorage.setItem('adminToken', data.data.token);
+                localStorage.setItem('adminInfo', JSON.stringify(data.data.admin || {}));
+                
+                // 登录成功：直接极速重定向到后台核心页
+                window.location.href = '/admin/';
+            } else {
+                errorMsg.textContent = data.message || '用户名或密码错误';
+                errEl.classList.remove('hidden');
+            }
+        } catch (err) {
+            errorMsg.textContent = '服务器连接失败: ' + err.message;
+            errEl.classList.remove('hidden');
+        } finally {
+            loginText.classList.remove('hidden');
+            loginLoading.classList.add('hidden');
+        }
+    }
+    </script>
+</body>
+</html>

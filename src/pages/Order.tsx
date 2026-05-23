@@ -13,7 +13,7 @@ const Order: React.FC = () => {
   const navigate = useNavigate();
   const { 
     cartItems, getTotalPrice, setDeliveryInfo, setAddress, submitOrder, setOrderSubmitting,
-    userToken, students, currentStudentId, setUserToken, setStudents, setCurrentStudentId, logout
+    userToken, students, currentStudentId, setUserToken, setCurrentUser, setStudents, setCurrentStudentId, logout
   } = useStore();
   
   const [phone, setPhone] = useState('');
@@ -100,6 +100,7 @@ const Order: React.FC = () => {
       setIsLoggingIn(true);
       const data = await api.auth.phoneLogin(phone, code);
       setUserToken(data.token);
+      setCurrentUser(data.user);
       setStudents(data.students);
       if (data.students.length > 0) {
         setCurrentStudentId(data.students[0].id);

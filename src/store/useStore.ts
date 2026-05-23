@@ -5,9 +5,11 @@ import { api } from '../services/api';
 interface StoreState {
   // 用户及学生状态
   userToken: string | null;
+  currentUser: { id: string; name: string; phone: string } | null;
   students: any[];
   currentStudentId: string | null;
   setUserToken: (token: string | null) => void;
+  setCurrentUser: (user: any | null) => void;
   setStudents: (students: any[]) => void;
   setCurrentStudentId: (id: string | null) => void;
   logout: () => void;
@@ -40,11 +42,16 @@ interface StoreState {
   loadFoods: (date?: string) => Promise<void>;
   loadCategories: () => Promise<void>;
   searchFoods: (keyword: string) => Promise<Food[]>;
+
+  // 系统设置状态
+  systemSettings: any | null;
+  loadSystemSettings: () => Promise<void>;
 }
 
 export const useStore = create<StoreState>((set, get) => ({
   // 用户及学生初始状态
   userToken: localStorage.getItem('userToken'),
+  currentUser: JSON.parse(localStorage.getItem('currentUser') || 'null'),
   students: JSON.parse(localStorage.getItem('userStudents') || '[]'),
   currentStudentId: localStorage.getItem('currentStudentId'),
   
@@ -52,6 +59,12 @@ export const useStore = create<StoreState>((set, get) => ({
     if (token) localStorage.setItem('userToken', token);
     else localStorage.removeItem('userToken');
     set({ userToken: token });
+  },
+
+  setCurrentUser: (user) => {
+    if (user) localStorage.setItem('currentUser', JSON.stringify(user));
+    else localStorage.removeItem('currentUser');
+    set({ currentUser: user });
   },
   
   setStudents: (students) => {
@@ -69,7 +82,8 @@ export const useStore = create<StoreState>((set, get) => ({
     localStorage.removeItem('userToken');
     localStorage.removeItem('userStudents');
     localStorage.removeItem('currentStudentId');
-    set({ userToken: null, students: [], currentStudentId: null });
+    localStorage.removeItem('currentUser');
+    set({ userToken: null, currentUser: null, students: [], currentStudentId: null });
   },
 
   // 购物车初始状态
@@ -215,7 +229,11 @@ export const useStore = create<StoreState>((set, get) => ({
   loadFoods: async (date?: string) => {
     try {
       set({ isLoading: true, error: null });
-      const foods = await api.menu.getItems({ date });
+      // 同时加载菜品和系统配置
+      const [foods] = await Promise.all([
+        api.menu.getItems({ date }),
+        get().loadSystemSettings()
+      ]);
       set({ foods, isLoading: false });
     } catch (error) {
       set({ 
@@ -248,6 +266,17 @@ export const useStore = create<StoreState>((set, get) => ({
         error: error instanceof Error ? error.message : '搜索失败'
       });
       return [];
+    }
+  },
+
+  // 加载系统配置
+  systemSettings: null,
+  loadSystemSettings: async () => {
+    try {
+      const settings = await api.public.getSettings();
+      set({ systemSettings: settings });
+    } catch (error) {
+      console.error('加载系统配置失败', error);
     }
   }
 }));

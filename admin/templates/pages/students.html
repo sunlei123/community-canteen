@@ -1,0 +1,31 @@
+<div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+    <h2 class="text-2xl font-bold text-gray-900">学生管理</h2>
+    <div class="flex flex-wrap gap-2">
+        <input type="file" id="importExcelInput" class="hidden" accept=".xlsx,.xls">
+        <button id="downloadTemplateBtn" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md text-sm transition-colors">
+            下载模板
+        </button>
+        <button id="importExcelBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm transition-colors">
+            导入Excel
+        </button>
+        <button id="addStudentBtn" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm transition-colors">
+            添加学生
+        </button>
+    </div>
+</div>
+
+<!-- 筛选栏 -->
+<div class="card mb-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+        <input type="text" id="studentSearchInput" placeholder="按姓名或手机号搜索" class="px-3 py-2 border border-gray-300 rounded-md text-sm w-full">
+        <input type="text" id="studentClassFilter" placeholder="按班级筛选 (如 4年2班)" class="px-3 py-2 border border-gray-300 rounded-md text-sm w-full">
+        <input type="text" id="studentGuardianFilter" placeholder="按负责人筛选" class="px-3 py-2 border border-gray-300 rounded-md text-sm w-full">
+        <button id="searchStudentBtn" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md text-sm transition-colors w-full">搜索</button>
+    </div>
+</div>
+
+<div class="card">
+    <div id="studentsTable">
+        <!-- 学生表格将在这里动态生成 -->
+    </div>
+</div>

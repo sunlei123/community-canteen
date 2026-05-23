@@ -18,7 +18,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const navigate = useNavigate();
   const location = useLocation();
   const totalItems = useStore(state => state.getTotalItems());
-  const { userToken, logout } = useStore();
+  const { userToken, logout, currentUser } = useStore();
 
   const handleBack = () => {
     navigate(-1);
@@ -63,6 +63,14 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* 右侧：登录/退出及购物车 */}
           <div className="flex items-center space-x-2">
+            {/* 统一展示当前登录人信息，完全删除“我的订单”按钮 */}
+            {userToken && currentUser && (
+              <span className="text-emerald-700 text-xs font-bold px-2.5 py-1 bg-gradient-to-r from-emerald-50/80 to-green-50/80 border border-emerald-100/60 rounded-xl flex items-center shadow-[0_2px_8px_rgba(16,185,129,0.08)] backdrop-blur-sm hover:scale-102 transition-all duration-300">
+                <span className="mr-1 text-sm animate-pulse">👤</span>
+                {currentUser.name} <span className="text-emerald-600/70 font-normal ml-1">({currentUser.phone ? currentUser.phone.slice(-4) : ''})</span>
+              </span>
+            )}
+
             {/* 登录/退出按钮 */}
             {userToken ? (
               <Button

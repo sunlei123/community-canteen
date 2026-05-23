@@ -18,9 +18,11 @@ async function apiRequest<T>(
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
   
+  const token = localStorage.getItem('userToken');
   const defaultOptions: RequestInit = {
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
     },
   };
 
@@ -33,14 +35,18 @@ async function apiRequest<T>(
     },
   });
 
-  if (!response.ok) {
-    throw new Error(`API请求失败: ${response.status} ${response.statusText}`);
+  let result: ApiResponse<T>;
+  try {
+    result = await response.json();
+  } catch (e) {
+    if (!response.ok) {
+      throw new Error(`API请求失败: ${response.status} ${response.statusText}`);
+    }
+    throw new Error('解析服务器响应失败');
   }
-
-  const result: ApiResponse<T> = await response.json();
   
-  if (!result.success) {
-    throw new Error(result.message || result.error || 'API请求失败');
+  if (!response.ok || !result.success) {
+    throw new Error(result.message || result.error || `API请求失败: ${response.status} ${response.statusText}`);
   }
 
   return result.data as T;
@@ -84,6 +90,7 @@ export const orderApi = {
     mealTime: string;
     totalPrice: number;
     studentId: string;
+    customerInfo?: { note?: string };
   }) => {
     return apiRequest<any>('/orders', {
       method: 'POST',
@@ -96,6 +103,8 @@ export const orderApi = {
     status?: string; 
     startDate?: string; 
     endDate?: string;
+    studentIds?: string;
+    search?: string;
     page?: number;
     limit?: number;
   }) => {
@@ -103,6 +112,8 @@ export const orderApi = {
     if (params?.status) searchParams.append('status', params.status);
     if (params?.startDate) searchParams.append('startDate', params.startDate);
     if (params?.endDate) searchParams.append('endDate', params.endDate);
+    if (params?.studentIds) searchParams.append('studentIds', params.studentIds);
+    if (params?.search) searchParams.append('search', params.search);
     if (params?.page) searchParams.append('page', params.page.toString());
     if (params?.limit) searchParams.append('limit', params.limit.toString());
     
@@ -141,6 +152,13 @@ export const orderApi = {
       revenue: number;
     }>('/orders/statistics');
   },
+
+  // 检查指定学生某天是否已订餐
+  checkToday: (studentId: string, date: string) => {
+    return apiRequest<{ hasOrder: boolean; order: any | null }>(
+      `/orders/check-today?studentId=${encodeURIComponent(studentId)}&date=${encodeURIComponent(date)}`
+    );
+  },
 };
 
 // 健康检查API
@@ -160,7 +178,7 @@ export const authApi = {
   },
   
   phoneLogin: (phone: string, code: string) => {
-    return apiRequest<{ token: string; students: any[] }>('/auth/phone-login', {
+    return apiRequest<{ token: string; user: any; students: any[] }>('/auth/phone-login', {
       method: 'POST',
       body: JSON.stringify({ phone, code }),
     });
@@ -178,6 +196,30 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify({ phone, name, password }),
     });
+  },
+
+  addStudent: (studentData: {
+    name: string;
+    class: string;
+    guardian?: string;
+    phone: string;
+    firstOrderDate?: string;
+  }) => {
+    return apiRequest<{ student: any; students: any[] }>('/auth/add-student', {
+      method: 'POST',
+      body: JSON.stringify(studentData),
+    });
+  },
+
+  getServerDate: () => {
+    return apiRequest<{ date: string }>('/auth/server-date');
+  }
+};
+
+// 公共API
+export const publicApi = {
+  getSettings: () => {
+    return apiRequest<any>('/public/settings');
   }
 };
 
@@ -187,6 +229,7 @@ export const api = {
   order: orderApi,
   health: healthApi,
   auth: authApi,
+  public: publicApi,
 };
 
 export default api;

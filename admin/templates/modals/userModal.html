@@ -1,0 +1,26 @@
+<div class="flex items-center justify-center min-h-screen p-4">
+    <div class="bg-white rounded-lg p-6 w-full max-w-md shadow-xl transition-all">
+        <h3 class="text-lg font-medium text-gray-900 mb-4" id="userModalTitle">添加家长用户</h3>
+        <form id="userForm">
+            <input type="hidden" id="userId" name="id">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">手机号 *</label>
+                    <input type="tel" id="userPhone" name="phone" required pattern="1[3-9]\d{9}" placeholder="11位手机号" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">家长姓名 *</label>
+                    <input type="text" id="userNameInput" name="name" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end space-x-3">
+                <button type="button" id="cancelUserBtn" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                    取消
+                </button>
+                <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                    保存
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

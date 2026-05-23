@@ -30,6 +30,7 @@ export let users = [];
 export let loginLogs = [];
 export let dailyMenus = [];
 export const admins = [];
+export let systemSettings = null;
 export let statistics = {
   totalOrders: 0,
   totalRevenue: 0,
@@ -152,7 +153,26 @@ export async function initializeDatabase() {
         student_id TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT,
-        estimated_time TEXT
+        estimated_time TEXT,
+        order_number TEXT
+      );
+    `);
+
+    // Ensure customer_info column exists in Neon PG for existing databases
+    await pool.query(`
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_info JSONB;
+    `);
+
+    // Ensure order_number column exists in Neon PG for existing databases
+    await pool.query(`
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS order_number TEXT;
+    `);
+
+    // 8. Create System Settings Table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS system_settings (
+        id TEXT PRIMARY KEY,
+        data JSONB NOT NULL
       );
     `);
 
@@ -421,6 +441,24 @@ export async function initializeDatabase() {
       }
     }
 
+    // Seed default system settings if empty
+    const settingsCheck = await pool.query('SELECT COUNT(*) FROM system_settings');
+    if (parseInt(settingsCheck.rows[0].count) === 0) {
+      console.log('🌱 Seeding default system settings...');
+      const defaultSettings = {
+        wechat: 'dong_teacher_kitchen',
+        phone: '139-0000-0001',
+        quote: '“每一道菜，都用做给自己孩子的心意去烹饪。” —— 董老师',
+        noticeDelivery: '🔹 工作日午餐：11:30 - 12:15 之间配送到校门指定取餐点；\n🔹 工作日晚餐：17:30 - 18:15 之间配送到校门指定取餐点。',
+        noticeDiscount: '只要您同时点了一份主食与一份汤品，即可享受套餐特惠：\n💰 一荤两素一饭一汤 = 15元\n💰 两荤一素一饭一汤 = 17元\n💰 三荤一饭一汤 = 20元\n※ 超出套餐以外的菜品或未配齐饭汤将按单价累计，水果甜品始终按单价核算。',
+        noticeCancel: '由于食材需每日清晨新鲜采购，如需退订或修改配送信息，请提前一天晚上 20:00 前在“我的订单”中直接取消，系统将即时退回全款。逾期由于备料完成，恕不接受退订，敬请家长谅解。'
+      };
+      await pool.query(
+        'INSERT INTO system_settings (id, data) VALUES ($1, $2)',
+        ['1', JSON.stringify(defaultSettings)]
+      );
+    }
+
     // Hydrate memory arrays from Neon PG database
     console.log('💧 Hydrating memory arrays from Neon PostgreSQL...');
 
@@ -464,13 +502,29 @@ export async function initializeDatabase() {
     orders.push(...orderRes.rows.map(row => {
       const o = rowToCamel(row);
       o.totalPrice = parseFloat(o.totalPrice);
+      if (!o.orderNumber) {
+        // 如果旧订单没有订单号，生成一个确定性且合法的订单号以作兼容
+        const date = o.createdAt ? new Date(o.createdAt) : new Date();
+        const year = date.getFullYear().toString().slice(-2);
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
+        // 使用 id 里的数字字符切片作为稳定后缀，保持订单号在重启服务后是一致的
+        const suffix = o.id ? o.id.replace(/[^0-9]/g, '').slice(0, 4).padEnd(4, '0') : Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+        o.orderNumber = `CC${year}${month}${day}${suffix}`;
+      }
       return o;
     }));
 
     // Rebuild memory statistics
     rebuildStatistics();
 
-    console.log(`✅ Hydration completed: ${admins.length} admins, ${menuItems.length} menu items, ${students.length} students, ${users.length} users, ${loginLogs.length} logs, ${dailyMenus.length} daily menus, ${orders.length} orders.`);
+    // 8. System Settings
+    const settingsRes = await pool.query('SELECT * FROM system_settings WHERE id = $1', ['1']);
+    if (settingsRes.rows.length > 0) {
+      systemSettings = settingsRes.rows[0].data;
+    }
+
+    console.log(`✅ Hydration completed: ${admins.length} admins, ${menuItems.length} menu items, ${students.length} students, ${users.length} users, ${loginLogs.length} logs, ${dailyMenus.length} daily menus, ${orders.length} orders, settings loaded.`);
   } catch (err) {
     console.error('❌ Failed to initialize and hydrate database:', err);
     throw err;
@@ -521,6 +575,18 @@ function calculateEstimatedTime(deliveryDate, mealTime) {
 
 // Write-Through Database Operations object
 export const db = {
+  // 系统设置
+  getSettings: () => systemSettings,
+  updateSettings: (newSettings) => {
+    systemSettings = { ...systemSettings, ...newSettings };
+    // Background write to PG
+    pool.query(
+      'UPDATE system_settings SET data = $1 WHERE id = $2',
+      [JSON.stringify(systemSettings), '1']
+    ).catch(err => console.error('Error updating system settings in PG:', err));
+    return systemSettings;
+  },
+
   // 菜品操作
   getMenuItems: () => menuItems,
   getMenuItemById: (id) => menuItems.find(item => item.id === id),
@@ -584,9 +650,23 @@ export const db = {
     
     // Background write to PG
     pool.query(
-      `INSERT INTO orders (id, items, total_price, delivery_date, meal_time, address, status, student_id, created_at, updated_at, estimated_time)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-      [newOrder.id, JSON.stringify(newOrder.items), newOrder.totalPrice, newOrder.deliveryDate, newOrder.mealTime, newOrder.address, newOrder.status, newOrder.studentId || null, newOrder.createdAt, newOrder.updatedAt || null, newOrder.estimatedTime]
+      `INSERT INTO orders (id, items, total_price, delivery_date, meal_time, address, status, student_id, created_at, updated_at, estimated_time, customer_info, order_number)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+      [
+        newOrder.id, 
+        JSON.stringify(newOrder.items), 
+        newOrder.totalPrice, 
+        newOrder.deliveryDate, 
+        newOrder.mealTime, 
+        newOrder.address, 
+        newOrder.status, 
+        newOrder.studentId || null, 
+        newOrder.createdAt, 
+        newOrder.updatedAt || null, 
+        newOrder.estimatedTime,
+        JSON.stringify(newOrder.customerInfo || {}),
+        newOrder.orderNumber
+      ]
     ).catch(err => console.error('Error persisting order to PG:', err));
 
     rebuildStatistics();
@@ -817,7 +897,7 @@ export const db = {
   // 每日菜单操作
   getDailyMenus: () => dailyMenus,
   getDailyMenuByDate: (date) => dailyMenus.find(m => m.date === date),
-  saveDailyMenu: (date, dishes, published = true) => {
+  saveDailyMenu: async (date, dishes, published = true) => {
     const index = dailyMenus.findIndex(m => m.date === date);
     let result;
     if (index !== -1) {
@@ -840,25 +920,32 @@ export const db = {
       result = newDaily;
     }
 
-    // Background write using ON CONFLICT in PG
-    pool.query(
-      `INSERT INTO daily_menus (id, date, dishes, published, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       ON CONFLICT (date) DO UPDATE
-       SET dishes = EXCLUDED.dishes, published = EXCLUDED.published, updated_at = EXCLUDED.updated_at`,
-      [result.id, result.date, JSON.stringify(result.dishes), result.published, result.createdAt || result.updatedAt, result.updatedAt || null]
-    ).catch(err => console.error('Error saving daily menu to PG:', err));
+    try {
+      await pool.query(
+        `INSERT INTO daily_menus (id, date, dishes, published, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         ON CONFLICT (date) DO UPDATE
+         SET dishes = EXCLUDED.dishes, published = EXCLUDED.published, updated_at = EXCLUDED.updated_at`,
+        [result.id, result.date, JSON.stringify(result.dishes), result.published, result.createdAt || result.updatedAt, result.updatedAt || null]
+      );
+    } catch (err) {
+      console.error('Error saving daily menu to PG:', err);
+      throw err;
+    }
 
     return result;
   },
-  deleteDailyMenu: (id) => {
+  deleteDailyMenu: async (id) => {
     const index = dailyMenus.findIndex(m => m.id === id);
     if (index !== -1) {
       const deleted = dailyMenus.splice(index, 1)[0];
 
-      // Background write to PG
-      pool.query('DELETE FROM daily_menus WHERE id = $1', [id])
-        .catch(err => console.error('Error deleting daily menu from PG:', err));
+      try {
+        await pool.query('DELETE FROM daily_menus WHERE id = $1', [id]);
+      } catch (err) {
+        console.error('Error deleting daily menu from PG:', err);
+        throw err;
+      }
 
       return deleted;
     }
@@ -869,5 +956,60 @@ export const db = {
   getStatistics: () => {
     rebuildStatistics();
     return statistics;
+  },
+
+  // 系统管理员用户操作 (System Admins Crud)
+  getAdmins: () => admins,
+  getAdminById: (id) => admins.find(a => a.id === id),
+  addAdmin: (adminData) => {
+    const exists = admins.some(a => a.username === adminData.username);
+    if (exists) throw new Error('该账号名已存在');
+    const newAdmin = {
+      ...adminData,
+      id: uuidv4(),
+      createdAt: new Date().toISOString()
+    };
+    admins.push(newAdmin);
+
+    // Background write to PG
+    pool.query(
+      'INSERT INTO admins (id, username, password, name, role, email, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+      [newAdmin.id, newAdmin.username, newAdmin.password, newAdmin.name, newAdmin.role, newAdmin.email || null, newAdmin.createdAt]
+    ).catch(err => console.error('Error persisting admin to PG:', err));
+
+    return newAdmin;
+  },
+  updateAdmin: (id, updates) => {
+    const index = admins.findIndex(a => a.id === id);
+    if (index !== -1) {
+      if (updates.username && updates.username !== admins[index].username) {
+        const exists = admins.some(a => a.username === updates.username);
+        if (exists) throw new Error('该账号名已存在');
+      }
+      admins[index] = { ...admins[index], ...updates };
+      const updated = admins[index];
+
+      // Background write to PG
+      pool.query(
+        'UPDATE admins SET username = $1, password = $2, name = $3, role = $4, email = $5 WHERE id = $6',
+        [updated.username, updated.password, updated.name, updated.role, updated.email || null, id]
+      ).catch(err => console.error('Error updating admin in PG:', err));
+
+      return updated;
+    }
+    return null;
+  },
+  deleteAdmin: (id) => {
+    const index = admins.findIndex(a => a.id === id);
+    if (index !== -1) {
+      const deleted = admins.splice(index, 1)[0];
+
+      // Background write to PG
+      pool.query('DELETE FROM admins WHERE id = $1', [id])
+        .catch(err => console.error('Error deleting admin from PG:', err));
+
+      return deleted;
+    }
+    return null;
   }
 };

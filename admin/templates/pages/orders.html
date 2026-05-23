@@ -1,0 +1,47 @@
+<div class="flex justify-between items-center mb-6">
+    <h2 class="text-2xl font-bold text-gray-900">订单管理</h2>
+</div>
+
+<!-- 高颜值订单模糊筛选卡片 -->
+<div class="card mb-6 bg-white rounded-xl border border-gray-200 p-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <input type="text" id="orderStudentNameFilter" placeholder="学生姓名模糊查询" class="px-3 py-2 border border-gray-300 rounded-md text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500">
+        <input type="text" id="orderStudentPhoneFilter" placeholder="手机号模糊查询" class="px-3 py-2 border border-gray-300 rounded-md text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500">
+        <input type="text" id="orderStudentClassFilter" placeholder="学校班级模糊查询" class="px-3 py-2 border border-gray-300 rounded-md text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500">
+        
+        <select id="orderStatusFilter" class="px-3 py-2 border border-gray-300 rounded-md text-sm w-full">
+            <option value="">全部状态</option>
+            <option value="pending">待处理</option>
+            <option value="confirmed">已确认</option>
+            <option value="preparing">制作中</option>
+            <option value="ready">待配送</option>
+            <option value="delivering">配送中</option>
+            <option value="completed">已完成</option>
+            <option value="cancelled">已取消</option>
+        </select>
+        
+        <div class="flex items-center gap-1 lg:col-span-2">
+            <input type="date" id="orderStartDateFilter" class="px-2 py-1.5 border border-gray-300 rounded-md text-sm w-full" placeholder="开始日期">
+            <span class="text-xs text-gray-500">至</span>
+            <input type="date" id="orderEndDateFilter" class="px-2 py-1.5 border border-gray-300 rounded-md text-sm w-full" placeholder="结束日期">
+        </div>
+    </div>
+    <div class="flex justify-end gap-2 mt-3">
+        <button id="searchOrdersBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm transition-colors flex items-center gap-1.5 font-medium shadow-sm">
+            🔍 查询
+        </button>
+        <button id="resetOrdersFilterBtn" class="px-4 py-2 border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-md text-sm transition-colors flex items-center gap-1.5 font-medium shadow-sm">
+            🔄 重置
+        </button>
+        <button id="exportOrdersBtn" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm transition-colors flex items-center gap-1.5 shadow-sm">
+            <i data-lucide="file-spreadsheet" class="h-4 w-4"></i>
+            <span>导出订单 (CSV)</span>
+        </button>
+    </div>
+</div>
+
+<div class="card">
+    <div id="ordersTable">
+        <!-- 订单表格将在这里动态生成 -->
+    </div>
+</div>

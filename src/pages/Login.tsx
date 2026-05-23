@@ -9,7 +9,7 @@ import { cn } from '../lib/utils';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
-  const { setUserToken, setStudents, setCurrentStudentId } = useStore();
+  const { setUserToken, setStudents, setCurrentStudentId, setCurrentUser } = useStore();
   
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
   
@@ -44,6 +44,7 @@ const Login: React.FC = () => {
     try {
       const data = await api.auth.parentLogin(phone, password);
       setUserToken(data.token);
+      setCurrentUser(data.user);
       setStudents(data.students);
       if (data.students && data.students.length > 0) {
         setCurrentStudentId(data.students[0].id);
@@ -92,6 +93,7 @@ const Login: React.FC = () => {
         try {
           const data = await api.auth.parentLogin(regPhone, regPassword);
           setUserToken(data.token);
+          setCurrentUser(data.user);
           setStudents(data.students);
           if (data.students && data.students.length > 0) {
             setCurrentStudentId(data.students[0].id);

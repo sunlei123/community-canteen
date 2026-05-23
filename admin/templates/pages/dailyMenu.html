@@ -1,0 +1,39 @@
+<div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+    <h2 class="text-2xl font-bold text-gray-900">每日菜单发布</h2>
+    <div class="flex flex-wrap items-center gap-2 sm:gap-4">
+        <label class="text-sm font-medium text-gray-700">发布日期：</label>
+        <input type="date" id="dailyMenuDateSelector" class="px-3 py-2 border border-gray-300 rounded-md text-sm">
+        <button id="saveDailyMenuBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm transition-colors">
+            保存并发布
+        </button>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <div class="card">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">📦 选择本日提供的菜品</h3>
+        <div id="dailyMenuDishesSelector" class="space-y-4 max-h-[500px] overflow-y-auto pr-2">
+            <!-- 菜品复选框列表将动态载入 -->
+        </div>
+    </div>
+    
+    <div class="card">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">📋 菜单状态与预览</h3>
+        <div class="space-y-6">
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-sm text-gray-600 font-medium">发布状态：</span>
+                    <span id="dailyMenuStatusBadge" class="px-2.5 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">未发布</span>
+                </div>
+                <p class="text-xs text-gray-500">保存后，学生客户端在此日期将仅能预订已选中的菜品。</p>
+            </div>
+            
+            <div class="border-t pt-4" id="dailyMenuPreviewSection">
+                <h4 class="text-sm font-semibold text-gray-800 mb-3">当前选中预览：</h4>
+                <div id="dailyMenuPreviewList" class="space-y-4 max-h-[600px] overflow-y-auto bg-gray-50 p-4 rounded-xl border border-gray-200">
+                    <!-- 预览列表 -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -31,17 +31,35 @@ app.use(helmet({
 
 // CORS配置
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000', 'https://traelylv2ks1-d7hh72o47-pcs-projects-e951c936.vercel.app'],
+  origin: [
+    'http://localhost:5173', 
+    'http://localhost:5174', 
+    'http://localhost:3000', 
+    'http://127.0.0.1:5173', 
+    'http://127.0.0.1:5174',
+    'https://traelylv2ks1-d7hh72o47-pcs-projects-e951c936.vercel.app'
+  ],
   credentials: true
 }));
 
 // 请求限制
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15分钟
-  max: 100, // 限制每个IP 15分钟内最多100个请求
-  message: '请求过于频繁，请稍后再试'
+  max: process.env.NODE_ENV === 'production' ? 1000 : 999999, // 生产环境合理放宽，非生产环境完全放开限制
+  message: '请求过于频繁，请稍后再试',
+  skip: (req) => {
+    // 开发环境下免受频控阻断测试，保证 HMR 开发无忧
+    if (process.env.NODE_ENV !== 'production') return true;
+    
+    // 本地环回地址也跳过限制
+    const ip = req.ip || req.connection.remoteAddress || '';
+    if (ip.includes('127.0.0.1') || ip.includes('::1') || ip.includes('localhost')) {
+      return true;
+    }
+    return false;
+  }
 });
-app.use(limiter);
+app.use('/api', limiter);
 
 // 日志中间件
 app.use(morgan('combined'));
@@ -89,7 +107,7 @@ app.use((err, req, res, next) => {
   console.error('服务器错误:', err);
   res.status(500).json({ 
     error: '服务器内部错误',
-    message: process.env.NODE_ENV === 'development' ? err.message : '请稍后重试'
+    message: err.message || '请稍后重试'
   });
 });
 

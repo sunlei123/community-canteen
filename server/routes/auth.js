@@ -280,11 +280,17 @@ router.post('/phone-login', (req, res) => {
     // 记录成功登录日志
     db.addLoginLog({ phone, role: 'parent', status: 'success', ip, userAgent });
 
+    const existingUser = db.getUserByPhone(phone);
+    const user = existingUser 
+      ? { id: existingUser.id, phone: existingUser.phone, name: existingUser.name }
+      : { id: 'temp_' + phone, phone, name: students[0]?.guardian || '家长' };
+
     res.json({
       success: true,
       message: '登录成功',
       data: {
         token,
+        user,
         students
       }
     });
@@ -448,6 +454,57 @@ router.post('/parent-register', async (req, res) => {
   }
 });
 
+// 家长端新增绑定新宝贝
+router.post('/add-student', authenticateToken, (req, res) => {
+  try {
+    const { name, class: studentClass, guardian, phone, firstOrderDate } = req.body;
+    
+    if (!name || !studentClass) {
+      return res.status(400).json({
+        success: false,
+        message: '宝贝姓名和班级不能为空'
+      });
+    }
+
+    // 默认使用当前登录家长的 phone，但如果填写了 phone 则使用填写的。
+    const targetPhone = phone || req.user.phone;
+    
+    if (!targetPhone || !/^1\d{10}$/.test(targetPhone)) {
+      return res.status(400).json({
+        success: false,
+        message: '手机号格式不正确'
+      });
+    }
+
+    const newStudent = db.addStudent({
+      name,
+      class: studentClass,
+      guardian: guardian || req.user.name || '家长',
+      phone: targetPhone,
+      firstOrderDate: firstOrderDate || '-'
+    });
+
+    // 绑定成功后，实时拉取并返回该家长名下（以 req.user.phone 作为标识）的所有宝贝列表，以便前端可以直接同步更新
+    const students = db.getStudentsByPhone(req.user.phone);
+
+    res.status(201).json({
+      success: true,
+      message: '学生绑定成功',
+      data: {
+        student: newStudent,
+        students
+      }
+    });
+  } catch (error) {
+    console.error('绑定学生失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '绑定学生失败',
+      error: error.message
+    });
+  }
+});
+
 // 验证当前token
 router.get('/verify', authenticateToken, (req, res) => {
   res.json({
@@ -457,6 +514,29 @@ router.get('/verify', authenticateToken, (req, res) => {
       user: req.user
     }
   });
+});
+
+// 获取服务器当天日期（无需登录的公共接口）
+router.get('/server-date', (req, res) => {
+  try {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const serverDate = `${year}-${month}-${day}`;
+    res.json({
+      success: true,
+      data: {
+        date: serverDate
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '获取服务器日期失败',
+      error: error.message
+    });
+  }
 });
 
 // 退出登录
