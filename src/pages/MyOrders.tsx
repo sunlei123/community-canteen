@@ -408,14 +408,32 @@ const MyOrders: React.FC = () => {
                     </span>
 
                     {/* 温润的金额气泡标签 */}
-                    {hasOrder ? (
-                      <span className={cn(
-                        "text-[8px] px-1 py-0.2 rounded border scale-[0.9] origin-bottom mt-1 block truncate max-w-full",
-                        badgeClass
-                      )}>
-                        ¥{dayPrice.toFixed(0)}
-                      </span>
-                    ) : (
+                    {hasOrder ? (() => {
+                      const activeOrders = cellOrders.filter(o => o.status !== 'cancelled');
+                      const hasActive = activeOrders.length > 0;
+                      const hasPending = cellOrders.some(o => o.status === 'pending');
+                      
+                      let stateLabel = '';
+                      if (hasActive) {
+                        stateLabel = '已付';
+                      } else if (hasPending) {
+                        stateLabel = '待付';
+                      } else {
+                        stateLabel = '已取消';
+                      }
+                      
+                      const displayPrice = activeOrders.reduce((sum, o) => sum + o.totalPrice, 0);
+                      const labelText = `${stateLabel}-¥${displayPrice.toFixed(0)}`;
+
+                      return (
+                        <span className={cn(
+                          "text-[8px] px-1.5 py-0.5 rounded border scale-[0.9] origin-bottom mt-1 block truncate max-w-full font-bold",
+                          badgeClass
+                        )}>
+                          {labelText}
+                        </span>
+                      );
+                    })() : (
                       <span className="w-1.5 h-1.5 rounded-full bg-transparent mt-2" />
                     )}
                   </button>
@@ -533,23 +551,11 @@ const MyOrders: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* #03 用餐时段 */}
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-gray-500 flex items-center">
-                          <span className="bg-green-100 text-green-700 w-4 h-4 flex items-center justify-center rounded-full text-[9px] mr-1.5 font-bold">3</span>
-                          用餐时段
-                        </label>
-                        <div className="flex items-center space-x-2 bg-gray-50 px-3 py-2 rounded-xl border border-gray-100 text-xs text-gray-700 font-semibold">
-                          <Clock className="h-4.5 w-4.5 text-gray-400 flex-shrink-0" />
-                          <span>{order.mealTime === 'lunch' ? '☀️ 中午送达 (11:30-13:30)' : '🌙 晚上送达 (17:30-19:30)'}</span>
-                        </div>
-                      </div>
-
-                      {/* #04 配送主食 */}
+                      {/* #03 配送主食 */}
                       {staples.length > 0 && (
                         <div className="space-y-1.5 pt-3 border-t border-dashed border-gray-100">
                           <label className="text-xs font-semibold text-gray-500 flex items-center">
-                            <span className="bg-green-100 text-green-700 w-4 h-4 flex items-center justify-center rounded-full text-[9px] mr-1.5 font-bold">4</span>
+                            <span className="bg-green-100 text-green-700 w-4 h-4 flex items-center justify-center rounded-full text-[9px] mr-1.5 font-bold">3</span>
                             配送主食 (单选已选)
                           </label>
                           <div className="space-y-2">
@@ -571,11 +577,11 @@ const MyOrders: React.FC = () => {
                         </div>
                       )}
 
-                      {/* #05 每日美味菜品 */}
+                      {/* #04 每日美味菜品 */}
                       {mains.length > 0 && (
                         <div className="space-y-1.5 pt-3 border-t border-dashed border-gray-100">
                           <label className="text-xs font-semibold text-gray-500 flex items-center">
-                            <span className="bg-green-100 text-green-700 w-4 h-4 flex items-center justify-center rounded-full text-[9px] mr-1.5 font-bold">5</span>
+                            <span className="bg-green-100 text-green-700 w-4 h-4 flex items-center justify-center rounded-full text-[9px] mr-1.5 font-bold">4</span>
                             每日美味菜品 (荤素明细)
                           </label>
                           <div className="space-y-2">
@@ -601,10 +607,10 @@ const MyOrders: React.FC = () => {
                         </div>
                       )}
 
-                      {/* #06 营养汤品 */}
+                      {/* #05 营养汤品 */}
                       <div className="space-y-1.5 pt-3 border-t border-dashed border-gray-100">
                         <label className="text-xs font-semibold text-gray-500 flex items-center">
-                          <span className="bg-green-100 text-green-700 w-4 h-4 flex items-center justify-center rounded-full text-[9px] mr-1.5 font-bold">6</span>
+                          <span className="bg-green-100 text-green-700 w-4 h-4 flex items-center justify-center rounded-full text-[9px] mr-1.5 font-bold">5</span>
                           今日营养汤品选择
                         </label>
                         {soups.length > 0 ? (
@@ -629,11 +635,11 @@ const MyOrders: React.FC = () => {
                         )}
                       </div>
 
-                      {/* #07 水果酸奶 */}
+                      {/* #06 水果酸奶 */}
                       {desserts.length > 0 && (
                         <div className="space-y-1.5 pt-3 border-t border-dashed border-gray-100">
                           <label className="text-xs font-semibold text-gray-500 flex items-center">
-                            <span className="bg-green-100 text-green-700 w-4 h-4 flex items-center justify-center rounded-full text-[9px] mr-1.5 font-bold">7</span>
+                            <span className="bg-green-100 text-green-700 w-4 h-4 flex items-center justify-center rounded-full text-[9px] mr-1.5 font-bold">6</span>
                             水果、饮品与健康酸奶 (已点)
                           </label>
                           <div className="grid grid-cols-2 gap-2">

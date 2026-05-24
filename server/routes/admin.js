@@ -71,7 +71,17 @@ router.get('/dashboard', (req, res) => {
     // 最近订单
     const recentOrders = orders
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      .slice(0, 10);
+      .slice(0, 10)
+      .map(order => {
+        const student = students.find(s => s.id === order.studentId);
+        return {
+          ...order,
+          studentName: student ? student.name : (order.address ? order.address.split(' ')[0] : '未知'),
+          studentClass: student ? student.class : '',
+          studentGuardian: student ? student.guardian : '',
+          studentPhone: student ? student.phone : ''
+        };
+      });
     
     // 订单状态分布
     const statusDistribution = orders.reduce((acc, order) => {

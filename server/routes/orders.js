@@ -1,47 +1,60 @@
 import express from 'express';
-import { db } from '../data/database.js';
+import { db, pool } from '../data/database.js';
 
-// 最优折扣套餐计算
-const calculateOptimalComboPrice = (
-  meatPrices,
-  veggiePrices,
-  staplePrices,
-  soupPrices
-) => {
+// 自然周判断函数
+function getWeekRange(dateStr) {
+  const date = new Date(dateStr);
+  const day = date.getDay(); // 0为周日，1-6为周一到周六
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  
+  const monday = new Date(date);
+  monday.setDate(date.getDate() + diffToMonday);
+  
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  
+  const toDateString = (d) => {
+    const offset = d.getTimezoneOffset();
+    const local = new Date(d.getTime() - (offset * 60 * 1000));
+    return local.toISOString().split('T')[0];
+  };
+  
+  return {
+    mondayStr: toDateString(monday),
+    sundayStr: toDateString(sunday)
+  };
+}
+
+// 荤菜、素菜最优折扣套餐计算
+const calculateOptimalComboPrice = (meatPrices, veggiePrices) => {
   const sortedMeats = [...meatPrices].sort((a, b) => b - a);
   const sortedVeggies = [...veggiePrices].sort((a, b) => b - a);
-  const sortedStaples = [...staplePrices].sort((a, b) => b - a);
-  const sortedSoups = [...soupPrices].sort((a, b) => b - a);
 
   const memo = {};
 
-  const getMinPrice = (
-    mCount,
-    vCount,
-    sCount,
-    spCount
-  ) => {
-    const key = `${mCount},${vCount},${sCount},${spCount}`;
+  const getMinPrice = (mCount, vCount) => {
+    const key = `${mCount},${vCount}`;
     if (key in memo) return memo[key];
 
     let minPrice = 0;
     for (let i = sortedMeats.length - mCount; i < sortedMeats.length; i++) minPrice += sortedMeats[i];
     for (let i = sortedVeggies.length - vCount; i < sortedVeggies.length; i++) minPrice += sortedVeggies[i];
-    for (let i = sortedStaples.length - sCount; i < sortedStaples.length; i++) minPrice += sortedStaples[i];
-    for (let i = sortedSoups.length - spCount; i < sortedSoups.length; i++) minPrice += sortedSoups[i];
 
-    if (mCount >= 3 && sCount >= 1 && spCount >= 1) {
-      const price = 20 + getMinPrice(mCount - 3, vCount, sCount - 1, spCount - 1);
+    // 匹配：三荤 = 20元
+    if (mCount >= 3) {
+      const price = 20 + getMinPrice(mCount - 3, vCount);
       if (price < minPrice) minPrice = price;
     }
 
-    if (mCount >= 2 && vCount >= 1 && sCount >= 1 && spCount >= 1) {
-      const price = 17 + getMinPrice(mCount - 2, vCount - 1, sCount - 1, spCount - 1);
+    // 匹配：两荤一素 = 17元
+    if (mCount >= 2 && vCount >= 1) {
+      const price = 17 + getMinPrice(mCount - 2, vCount - 1);
       if (price < minPrice) minPrice = price;
     }
 
-    if (mCount >= 1 && vCount >= 2 && sCount >= 1 && spCount >= 1) {
-      const price = 15 + getMinPrice(mCount - 1, vCount - 2, sCount - 1, spCount - 1);
+    // 匹配：一荤两素 = 15元
+    if (mCount >= 1 && vCount >= 2) {
+      const price = 15 + getMinPrice(mCount - 1, vCount - 2);
       if (price < minPrice) minPrice = price;
     }
 
@@ -49,8 +62,72 @@ const calculateOptimalComboPrice = (
     return minPrice;
   };
 
-  return getMinPrice(sortedMeats.length, sortedVeggies.length, sortedStaples.length, sortedSoups.length);
+  return getMinPrice(sortedMeats.length, sortedVeggies.length);
 };
+
+// 计算单笔订单的基础餐费 (荤素折抵套餐 + 甜品水果累计)
+function calculateOrderBasePrice(order) {
+  const meatPrices = [];
+  const veggiePrices = [];
+  let dessertTotal = 0;
+
+  order.items.forEach(item => {
+    const menuItem = db.getMenuItemById(item.foodId || item.id);
+    if (!menuItem) return;
+
+    const itemPrice = menuItem.price;
+    const quantity = item.quantity || 1;
+
+    for (let i = 0; i < quantity; i++) {
+      if (menuItem.category === 'meat') {
+        meatPrices.push(itemPrice);
+      } else if (menuItem.category === 'veggie') {
+        veggiePrices.push(itemPrice);
+      } else if (menuItem.category === 'dessert_fruit') {
+        dessertTotal += itemPrice;
+      }
+      // staple (主食) 和 soup (汤) 强制不计入餐费
+    }
+  });
+
+  const comboPrice = calculateOptimalComboPrice(meatPrices, veggiePrices);
+  return comboPrice + dessertTotal;
+}
+
+// 自然周订餐价格同步与补偿引擎
+function recalculateWeekOrders(studentId, deliveryDate) {
+  if (!studentId) return;
+  const { mondayStr, sundayStr } = getWeekRange(deliveryDate);
+  const allOrders = db.getOrders();
+
+  // 找出该学生该自然周内所有有效且非 cancelled 的订单
+  const weekOrders = allOrders.filter(o =>
+    o.studentId === studentId &&
+    o.deliveryDate >= mondayStr &&
+    o.deliveryDate <= sundayStr &&
+    o.status !== 'cancelled'
+  );
+
+  const totalCount = weekOrders.length;
+  // 每餐标准加价额（不满3餐加2元，满3餐及以上加0元）
+  const extraFee = totalCount >= 3 ? 0 : 2;
+
+  weekOrders.forEach(o => {
+    const basePrice = calculateOrderBasePrice(o);
+    const newTotalPrice = basePrice + extraFee;
+
+    if (o.totalPrice !== newTotalPrice) {
+      o.totalPrice = newTotalPrice;
+      o.updatedAt = new Date().toISOString();
+
+      // 同步写回 Neon PostgreSQL
+      pool.query(
+        'UPDATE orders SET total_price = $1, updated_at = $2 WHERE id = $3',
+        [newTotalPrice, o.updatedAt, o.id]
+      ).catch(err => console.error(`Error updating order ${o.id} price in PG:`, err));
+    }
+  });
+}
 
 const router = express.Router();
 
@@ -96,13 +173,6 @@ router.post('/', (req, res) => {
       });
     }
 
-    let calculatedTotalPrice = 0;
-    const meatPrices = [];
-    const veggiePrices = [];
-    const staplePrices = [];
-    const soupPrices = [];
-    let dessertTotal = 0;
-
     const orderItems = items.map(item => {
       const menuItem = db.getMenuItemById(item.foodId || item.id);
       if (!menuItem) {
@@ -116,21 +186,6 @@ router.post('/', (req, res) => {
       const quantity = item.quantity || 1;
       const itemTotal = itemPrice * quantity;
 
-      // 按数量展开加入计算数组
-      for (let i = 0; i < quantity; i++) {
-        if (menuItem.category === 'meat') {
-          meatPrices.push(itemPrice);
-        } else if (menuItem.category === 'veggie') {
-          veggiePrices.push(itemPrice);
-        } else if (menuItem.category === 'staple') {
-          staplePrices.push(itemPrice);
-        } else if (menuItem.category === 'soup') {
-          soupPrices.push(itemPrice);
-        } else {
-          dessertTotal += itemPrice;
-        }
-      }
-      
       return {
         id: menuItem.id,
         name: menuItem.name,
@@ -140,13 +195,58 @@ router.post('/', (req, res) => {
         subtotal: itemTotal
       };
     });
-    
-    // 计算最优折扣总价
-    const comboPrice = calculateOptimalComboPrice(meatPrices, veggiePrices, staplePrices, soupPrices);
-    calculatedTotalPrice = comboPrice + dessertTotal;
 
-    // 安全强校验：以计算所得的真实最优套餐折抵价为准
-    const finalTotalPrice = calculatedTotalPrice;
+    // 强校验：荤菜和素菜的累计选择数量必须且只能为 3 份
+    let totalMainsCount = 0;
+    orderItems.forEach(item => {
+      const menuItem = db.getMenuItemById(item.id);
+      if (menuItem && (menuItem.category === 'meat' || menuItem.category === 'veggie')) {
+        totalMainsCount += item.quantity || 1;
+      }
+    });
+
+    if (totalMainsCount !== 3) {
+      return res.status(400).json({
+        success: false,
+        message: `为了营养均衡及套餐结算，荤菜与素菜累计必须选择且只能选择3份哦 🍱（当前已选 ${totalMainsCount} 份）`
+      });
+    }
+    
+    // 算出加上此订单后，本周有效订餐数
+    const { mondayStr, sundayStr } = getWeekRange(deliveryDate);
+    const existingWeekOrdersCount = allOrders.filter(o => 
+      o.studentId === studentId &&
+      o.deliveryDate >= mondayStr &&
+      o.deliveryDate <= sundayStr &&
+      o.status !== 'cancelled'
+    ).length;
+    
+    const newWeekOrdersCount = existingWeekOrdersCount + 1;
+    const newExtraFee = newWeekOrdersCount >= 3 ? 0 : 2;
+    
+    // 计算新订单基础价格
+    const newMeatPrices = [];
+    const newVeggiePrices = [];
+    let newDessertTotal = 0;
+    
+    orderItems.forEach(item => {
+      const menuItem = db.getMenuItemById(item.id);
+      if (!menuItem) return;
+      const quantity = item.quantity || 1;
+      for (let i = 0; i < quantity; i++) {
+        if (menuItem.category === 'meat') {
+          newMeatPrices.push(menuItem.price);
+        } else if (menuItem.category === 'veggie') {
+          newVeggiePrices.push(menuItem.price);
+        } else if (menuItem.category === 'dessert_fruit') {
+          newDessertTotal += menuItem.price;
+        }
+      }
+    });
+    
+    const baseComboPrice = calculateOptimalComboPrice(newMeatPrices, newVeggiePrices);
+    const basePrice = baseComboPrice + newDessertTotal;
+    const finalTotalPrice = basePrice + newExtraFee;
     
     // 创建订单
     const order = {
@@ -162,10 +262,16 @@ router.post('/', (req, res) => {
     
     const newOrder = db.addOrder(order);
     
+    // 触发周订单重算补偿，同步之前的订单价格（如有）
+    recalculateWeekOrders(studentId, deliveryDate);
+    
+    // 获取最新重算后的订单返回给前端，确保响应数据百分之百绝对精准
+    const finalNewOrder = db.getOrderById(newOrder.id) || newOrder;
+    
     res.status(201).json({
       success: true,
       message: '订单创建成功',
-      data: newOrder
+      data: finalNewOrder
     });
   } catch (error) {
     res.status(400).json({
@@ -314,10 +420,16 @@ router.patch('/:id/status', (req, res) => {
       });
     }
     
+    // 如果订单状态变为已取消 (或从已取消重新恢复)，触发该学生该配送周的价格重新计算补偿
+    recalculateWeekOrders(updatedOrder.studentId, updatedOrder.deliveryDate);
+    
+    // 获取重算价格后的最新订单数据返回给前端
+    const finalUpdatedOrder = db.getOrderById(id) || updatedOrder;
+    
     res.json({
       success: true,
       message: '订单状态更新成功',
-      data: updatedOrder
+      data: finalUpdatedOrder
     });
   } catch (error) {
     res.status(500).json({

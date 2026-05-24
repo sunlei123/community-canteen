@@ -96,7 +96,7 @@ export const dashboardMixin = {
                             </span>
                         </div>
                         <div class="flex justify-between items-center pt-2 border-t border-gray-50 mt-1">
-                            <span class="text-orange-600 font-extrabold text-xs">¥${dish.price.toFixed(2)}</span>
+                            <span class="text-orange-600 font-extrabold text-xs">${dish.category === 'dessert_fruit' ? `¥${dish.price.toFixed(2)}` : ''}</span>
                             <span class="text-[9px] font-bold text-gray-400 font-mono">ID: ${dish.id.substring(0, 4)}</span>
                         </div>
                     </div>
@@ -146,15 +146,38 @@ export const dashboardMixin = {
             return;
         }
 
-        container.innerHTML = orders.slice(0, 5).map(order => `
-            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg hover:bg-slate-200/60 transition-all duration-150 cursor-pointer shadow-sm hover:shadow-md">
-                <div>
-                    <p class="font-medium text-gray-800">${order.orderNumber}</p>
-                    <p class="text-sm text-gray-600">¥${order.totalPrice.toFixed(2)}</p>
+        container.innerHTML = orders.slice(0, 5).map(order => {
+            const studentName = order.studentName || (order.address && order.address.split(' ')[0]) || '未知';
+            const studentClass = order.studentClass || order.customerInfo?.schoolClass || (order.address && order.address.replace(' 送达教室', '')) || '未知班级';
+            const mealSummary = order.items && Array.isArray(order.items) 
+                ? order.items.map(item => `${item.name} x${item.quantity}`).join(' + ') 
+                : '无餐食';
+            const studentPhone = order.studentPhone || (order.address?.match(/1[3-9]\d{9}/)?.[0] || '无');
+            const note = order.customerInfo?.note || '';
+            return `
+                <div class="p-3 bg-gray-50 rounded-lg hover:bg-slate-200/60 transition-all duration-150 cursor-pointer shadow-sm hover:shadow-md flex flex-col space-y-1.5 border border-gray-100 mb-2 last:mb-0">
+                    <div class="flex justify-between items-center">
+                        <span class="font-medium text-xs text-gray-400 font-mono">${order.orderNumber}</span>
+                        <span class="px-2 py-0.5 text-[10px] rounded-full font-semibold ${this.getStatusColor(order.status)}">${this.getStatusText(order.status)}</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="font-bold text-gray-800">${studentName} <span class="text-gray-500 font-normal">(${studentClass})</span></span>
+                        <span class="font-bold text-rose-600">¥${order.totalPrice.toFixed(2)}</span>
+                    </div>
+                    <div class="text-[11px] text-gray-600 truncate" title="${mealSummary}">
+                        🍱 ${mealSummary}
+                    </div>
+                    <div class="text-[10px] text-gray-500 flex justify-between items-center font-light">
+                        <span>📞 手机: <span class="font-mono font-medium">${studentPhone}</span></span>
+                        ${note ? `<span class="bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded text-[9px] font-bold truncate max-w-[120px]" title="${note}">📝 ${note}</span>` : ''}
+                    </div>
+                    <div class="text-[10px] text-gray-400 font-light flex justify-between items-center pt-1 border-t border-gray-100/50">
+                        <span>送餐日期: ${order.deliveryDate || '未指定'}</span>
+                        <span>时段: ${order.mealTime === 'lunch' ? '☀️ 午餐' : '🌙 晚餐'}</span>
+                    </div>
                 </div>
-                <span class="px-2 py-1 text-xs rounded-full ${this.getStatusColor(order.status)}">${this.getStatusText(order.status)}</span>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
 };

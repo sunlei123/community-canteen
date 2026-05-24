@@ -548,7 +548,7 @@ const Verify: React.FC = () => {
                     <Calendar className="w-5 h-5 text-green-600" />
                     <h3 className="text-sm font-black text-gray-800">2. 日历形态与微信接龙明细联动验证</h3>
                   </div>
-                  <span className="text-[10px] bg-green-50 text-green-600 px-2 py-0.5 rounded-full border border-green-100 font-bold">微信拟真联动</span>
+
                 </div>
 
                 {/* 交互式月度日历盘仿真 */}
@@ -650,10 +650,6 @@ const Verify: React.FC = () => {
                           <User className="h-4 w-4 text-gray-400" />
                           <span>#2 订餐学生: 张杺萌 👦</span>
                         </div>
-                        <div className="flex items-center space-x-2 bg-white px-3 py-2 rounded-xl border border-gray-100 text-gray-700 font-semibold">
-                          <Clock className="h-4 w-4 text-gray-400" />
-                          <span>#3 用餐时段: ☀️ 中午送达 (11:30-13:30)</span>
-                        </div>
                       </div>
 
                       {/* 微信带序号与荤素徽标的菜品单 */}
@@ -665,12 +661,10 @@ const Verify: React.FC = () => {
                           const isVeggie = item.category === 'veggie';
                           const isSoup = item.category === 'soup';
 
-                          const emojiNumbers = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣'];
-
                           return (
                             <div key={item.id} className="border border-gray-50 bg-white rounded-xl p-2.5 flex items-center justify-between text-xs">
-                              <div className="flex items-center space-x-1.5 truncate w-[80%]">
-                                <span className="text-sm">{emojiNumbers[idx] || '🔹'}</span>
+                              <div className="flex items-center space-x-1 truncate w-[80%]">
+                                <span className="text-xs font-bold text-gray-500 mr-1.5">{idx + 1}.</span>
                                 <span className="font-bold text-gray-800 truncate">{item.name}</span>
                                 {isMeat && <span className="text-[8px] bg-red-50 text-red-600 px-1 py-0.2 rounded font-black border border-red-100">🍖 荤菜</span>}
                                 {isVeggie && <span className="text-[8px] bg-green-50 text-green-600 px-1 py-0.2 rounded font-black border border-green-100">🥦 素菜</span>}

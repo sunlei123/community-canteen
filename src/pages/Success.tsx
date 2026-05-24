@@ -157,24 +157,33 @@ const Success: React.FC = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {currentOrder.items?.map((item) => (
-                      <div key={item.food.id} className="flex justify-between">
-                        <span className="text-gray-600">
-                          {item.food.name} × {item.quantity}
-                        </span>
-                        <span className="text-gray-800">
-                          ¥{(item.food.price * item.quantity).toFixed(2)}
-                        </span>
-                      </div>
-                    ))}
-                    <div className="border-t pt-3">
-                      <div className="flex justify-between font-semibold">
-                        <span>总计</span>
-                        <span className="text-orange-600">
-                          ¥{currentOrder.totalPrice?.toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
+                    {(() => {
+                      const categoryWeight: Record<string, number> = {
+                        meat: 1,
+                        veggie: 2,
+                        staple: 3,
+                        soup: 4,
+                        dessert_fruit: 5
+                      };
+                      return [...(currentOrder.items || [])]
+                        .sort((a, b) => {
+                          const wA = categoryWeight[a.food.category] || 99;
+                          const wB = categoryWeight[b.food.category] || 99;
+                          return wA - wB;
+                        })
+                        .map((item) => (
+                          <div key={item.food.id} className="flex justify-between">
+                            <span className="text-gray-600">
+                              {item.food.name} × {item.quantity}
+                            </span>
+                            {item.food.category === 'dessert_fruit' && (
+                              <span className="text-gray-800">
+                                ¥{(item.food.price * item.quantity).toFixed(2)}
+                              </span>
+                            )}
+                          </div>
+                        ));
+                    })()}
                   </div>
                 </CardContent>
               </Card>

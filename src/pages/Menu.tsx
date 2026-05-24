@@ -5,16 +5,16 @@ import { Navbar } from '../components/Navbar';
 import { Button } from '../components/ui/Button';
 import { cn } from '../lib/utils';
 import { useStore } from '../store/useStore';
-import { 
-  Calendar, 
-  User, 
-  School, 
-  Check, 
-  Heart, 
-  MessageSquare, 
-  ShoppingBag, 
-  Smile, 
-  BookOpen, 
+import {
+  Calendar,
+  User,
+  School,
+  Check,
+  Heart,
+  MessageSquare,
+  ShoppingBag,
+  Smile,
+  BookOpen,
   AlertCircle,
   HelpCircle,
   Sparkles,
@@ -101,8 +101,8 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({ quantity, onChange,
   }
 
   return (
-    <div 
-      onClick={(e) => e.stopPropagation()} 
+    <div
+      onClick={(e) => e.stopPropagation()}
       className="flex items-center space-x-2 bg-[#E8F5E9]/60 backdrop-blur-sm rounded-full p-1 border border-green-200/50 shadow-sm animate-in zoom-in-75 duration-200"
     >
       <button
@@ -127,16 +127,16 @@ const Menu: React.FC = () => {
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const queryDate = queryParams.get('date');
-  
-  const { 
-    userToken, 
-    students, 
-    currentStudentId, 
+
+  const {
+    userToken,
+    students,
+    currentStudentId,
     setCurrentStudentId,
-    foods, 
-    isLoading, 
-    error, 
-    loadFoods 
+    foods,
+    isLoading,
+    error,
+    loadFoods
   } = useStore();
 
   // 认证守卫：若未登录直接重定向到 /login
@@ -177,23 +177,23 @@ const Menu: React.FC = () => {
   const getNext7Days = () => {
     const days = [];
     const weekdayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-    
+
     for (let i = 0; i < 7; i++) {
       const d = new Date();
       d.setDate(d.getDate() + i);
-      
+
       const offset = d.getTimezoneOffset();
       const localD = new Date(d.getTime() - (offset * 60 * 1000));
       const dateStr = localD.toISOString().split('T')[0];
-      
+
       let label = '';
       if (i === 0) label = '今天';
       else if (i === 1) label = '明天';
       else if (i === 2) label = '后天';
       else label = weekdayNames[d.getDay()];
-      
+
       const monthDay = `${d.getMonth() + 1}/${d.getDate()}`;
-      
+
       days.push({
         dateStr,
         label,
@@ -202,7 +202,7 @@ const Menu: React.FC = () => {
     }
     return days;
   };
-  
+
   const dateList = getNext7Days();
 
   // 根据选定日期请求该日期的每日菜单
@@ -246,17 +246,17 @@ const Menu: React.FC = () => {
       const initialQuantities: Record<string, number> = {};
       const staples = foods.filter(f => f.category === FoodCategory.STAPLE);
       const soups = foods.filter(f => f.category === FoodCategory.SOUP);
-      
+
       // 默认选中第一个主食，数量为 1
       if (staples.length > 0) {
         initialQuantities[staples[0].id] = 1;
       }
-      
+
       // 汤品默认选中并数量为 1
       soups.forEach(s => {
         initialQuantities[s.id] = 1;
       });
-      
+
       setSelectedQuantities(initialQuantities);
     }
   }, [foods]);
@@ -277,6 +277,20 @@ const Menu: React.FC = () => {
 
   // 通用卡片点击处理（主食、主菜、水果甜品）
   const handleCardClick = (id: string) => {
+    const food = foods.find(f => f.id === id);
+    const isMain = food && (food.category === FoodCategory.MEAT || food.category === FoodCategory.VEGGIE);
+
+    if (isMain) {
+      const qty = selectedQuantities[id] || 0;
+      if (qty === 0) {
+        const currentMainsCount = mains.reduce((sum, f) => sum + (selectedQuantities[f.id] || 0), 0);
+        if (currentMainsCount >= 3) {
+          toast.error('荤菜和素菜累计最多只能选择3份哦 🍱');
+          return;
+        }
+      }
+    }
+
     setSelectedQuantities(prev => {
       const qty = prev[id] || 0;
       if (qty > 0) {
@@ -352,9 +366,9 @@ const Menu: React.FC = () => {
       return;
     }
 
-    const selectedMains = mains.filter(f => (selectedQuantities[f.id] || 0) > 0);
-    if (selectedMains.length === 0) {
-      toast.error('请至少勾选一道美味菜品 🍖🥦');
+    const mainsCount = mains.reduce((sum, f) => sum + (selectedQuantities[f.id] || 0), 0);
+    if (mainsCount !== 3) {
+      toast.error(`为了营养均衡及套餐结算，荤菜与素菜累计必须选择且只能选择3份哦 🍱（当前已选 ${mainsCount} 份）`);
       return;
     }
 
@@ -414,7 +428,7 @@ const Menu: React.FC = () => {
         currentOrder: {
           id: result.id,
           items: formattedItems,
-          totalPrice,
+          totalPrice: result.totalPrice,
           deliveryDate: selectedDate,
           mealTime: selectedMealTime,
           address: orderData.address,
@@ -434,7 +448,7 @@ const Menu: React.FC = () => {
   // 生成接龙已选摘要文字
   const getSelectedSummaryText = () => {
     const list: string[] = [];
-    
+
     const categoriesOrder = [
       FoodCategory.STAPLE,
       FoodCategory.MEAT,
@@ -460,20 +474,16 @@ const Menu: React.FC = () => {
     return list.join(' + ') || '尚未选择菜品';
   };
 
-  // 微信经典拟真序号徽标
+  // 序号徽标
   const getSolitaireIndexBadge = (index: number) => {
-    const emojiNumbers = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
-    if (index < emojiNumbers.length) {
-      return <span className="text-lg mr-1.5">{emojiNumbers[index]}</span>;
-    }
-    return <span className="w-5 h-5 flex items-center justify-center bg-green-100 text-green-700 rounded-full text-xs font-bold mr-2">{index + 1}</span>;
+    return <span className="text-xs font-bold text-gray-500 mr-2">{index + 1}.</span>;
   };
 
   return (
     <div className="min-h-screen bg-[#F0F2F5] pb-24">
       <div className="max-w-md mx-auto bg-[#F0F2F5] min-h-screen shadow-md flex flex-col relative">
         <Navbar title="订餐接龙" showBack={true} showCart={false} />
-        
+
 
 
         {/* 订餐主界面 */}
@@ -483,9 +493,9 @@ const Menu: React.FC = () => {
               <div className="text-red-500 text-sm mb-3 flex items-center justify-center">
                 <AlertCircle className="w-5 h-5 mr-1" /> {error}
               </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => loadFoods(selectedDate)}
                 className="border-green-500 text-green-600 hover:bg-green-50"
               >
@@ -506,12 +516,12 @@ const Menu: React.FC = () => {
                 📅
               </div>
               <div className="space-y-2">
-                <h3 className="text-lg font-bold text-gray-800">该日期未发布订餐</h3>
+                <h3 className="text-lg font-bold text-gray-800">该日期 ({selectedDate}) 未发布订餐</h3>
                 <p className="text-gray-500 text-sm max-w-[280px] mx-auto leading-relaxed">
                   董老师今天还没有发布特定菜单或休假哦，敬请期待！您可以选择其他日期看看。
                 </p>
               </div>
-              <div className="pt-2">
+              {/* <div className="pt-2">
                 <Button 
                   variant="outline" 
                   size="sm"
@@ -520,47 +530,13 @@ const Menu: React.FC = () => {
                 >
                   返回今天
                 </Button>
-              </div>
+              </div> */}
             </div>
           ) : (
             /* 高颜值微信订餐接龙表单 */
             <div className="space-y-5">
-              
-              {/* ===== 今日已订餐提示横幅 ===== */}
-              {isCheckingOrder && (
-                <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex items-center gap-3 animate-pulse shadow-sm">
-                  <span className="text-2xl">🔍</span>
-                  <p className="text-blue-600 text-sm font-medium">正在检查今日订餐情况...</p>
-                </div>
-              )}
 
-              {!isCheckingOrder && todayOrderExists && (
-                <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 shadow-sm">
-                  <div className="flex items-start gap-3">
-                    <span className="text-3xl flex-shrink-0">🍱</span>
-                    <div className="flex-1">
-                      <h3 className="text-amber-800 font-bold text-base mb-1">今日已完成订餐</h3>
-                      <p className="text-amber-700 text-sm leading-relaxed mb-3">
-                        {currentStudent?.name} 今天已经订餐啦！每天每人只能订一份哦。
-                        {existingOrderNo && <span className="block mt-1 text-xs text-amber-600">订单号：{existingOrderNo}</span>}
-                      </p>
-                      <button
-                        onClick={() => navigate('/my-orders')}
-                        className="w-full py-2 px-4 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white text-sm font-semibold rounded-xl transition-all duration-200 shadow-sm"
-                      >
-                        查看我的订单 →
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* 多孩学生切换区、接龙表单：仅在今日尚未订餐时显示 */}
-              {!isCheckingOrder && !todayOrderExists && (
-              <>
-
-              {/* 多孩学生切换区（如果有多个孩子，在这里展示漂亮的学生切换栏） */}
-
+              {/* 多孩学生切换区（如果有多个孩子，在这里展示漂亮的学生切换栏，且无论是否已订餐均保持展示，方便自由切换） */}
               {students.length > 1 && (
                 <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
                   <div className="text-xs font-semibold text-gray-500 mb-2 flex items-center">
@@ -599,317 +575,353 @@ const Menu: React.FC = () => {
                 </div>
               )}
 
-              {/* 微信风格订餐接龙卡片 */}
-              <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100">
-                {/* 渐变头部 */}
-                <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-6 text-white relative">
-                  <div className="absolute right-4 top-4 opacity-10">
-                    <Utensils className="w-24 h-24 rotate-12" />
-                  </div>
-                  <div className="flex items-center space-x-2 mb-2">
-                    <span className="bg-white/20 text-xs px-2 py-0.5 rounded-full backdrop-blur-sm flex items-center">
-                      <Sparkles className="w-3 h-3 mr-1 text-yellow-300 animate-pulse" /> 社区小食堂
-                    </span>
-                    <span className="text-xs text-green-100">| 班级集中配送</span>
-                  </div>
-                  <h2 className="text-xl font-bold tracking-wide">董老师厨房 · 每日订餐接龙 🍀</h2>
-                  <p className="text-xs text-green-100 mt-2 font-light leading-relaxed">
-                    【每日订餐接龙】为了让孩子们吃上新鲜、营养、美味的午餐，请各位家长按要求如实填写，感谢您的配合与支持！
-                  </p>
+              {/* ===== 今日已订餐提示横幅 ===== */}
+              {isCheckingOrder && (
+                <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex items-center gap-3 animate-pulse shadow-sm">
+                  <span className="text-2xl">🔍</span>
+                  <p className="text-blue-600 text-sm font-medium">正在检查今日订餐情况...</p>
                 </div>
+              )}
 
-                {/* 接龙选项部分 */}
-                <div className="p-5 space-y-6">
-                  
-                  {/* #01 配送班级 */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-gray-700 flex items-center">
-                      <span className="bg-green-100 text-green-700 w-5 h-5 flex items-center justify-center rounded-full text-xs mr-2 font-bold">1</span>
-                      学校、年级班级
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <School className="h-4 w-4 text-gray-400" />
-                      </div>
-                      <input
-                        type="text"
-                        disabled
-                        value={currentStudent?.class || '暂无班级信息'}
-                        className="block w-full pl-9 pr-3 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-600 focus:outline-none cursor-not-allowed font-medium"
-                      />
+              {!isCheckingOrder && todayOrderExists && (
+                <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <span className="text-3xl flex-shrink-0">🍱</span>
+                    <div className="flex-1">
+                      <h3 className="text-amber-800 font-bold text-base mb-1">今日已完成订餐</h3>
+                      <p className="text-amber-700 text-sm leading-relaxed mb-3">
+                        {currentStudent?.name} 今天已经订餐啦！每天每人只能订一份哦。
+                        {existingOrderNo && <span className="block mt-1 text-xs text-amber-600">订单号：{existingOrderNo}</span>}
+                      </p>
+                      <button
+                        onClick={() => navigate('/my-orders')}
+                        className="w-full py-2 px-4 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white text-sm font-semibold rounded-xl transition-all duration-200 shadow-sm"
+                      >
+                        查看我的订单 →
+                      </button>
                     </div>
                   </div>
+                </div>
+              )}
 
-                  {/* #02 订餐学生姓名 */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-gray-700 flex items-center">
-                      <span className="bg-green-100 text-green-700 w-5 h-5 flex items-center justify-center rounded-full text-xs mr-2 font-bold">2</span>
-                      订餐学生姓名
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <User className="h-4 w-4 text-gray-400" />
+              {/* 接龙表单：仅在今日尚未订餐时显示 */}
+              {!isCheckingOrder && !todayOrderExists && (
+                <>
+                  {/* 微信风格订餐接龙卡片 */}
+                  <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100">
+                    {/* 渐变头部 */}
+                    <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-6 text-white relative">
+                      <div className="absolute right-4 top-4 opacity-10">
+                        <Utensils className="w-24 h-24 rotate-12" />
                       </div>
-                      <input
-                        type="text"
-                        disabled
-                        value={currentStudent?.name || '请先添加学生'}
-                        className="block w-full pl-9 pr-3 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-600 focus:outline-none cursor-not-allowed font-medium"
-                      />
-                    </div>
-                  </div>
-
-                  {/* #03 选择配送主食 (多选 & 追加) */}
-                  {staples.length > 0 && (
-                    <div className="space-y-3 pt-4 border-t border-dashed border-gray-100">
-                      <label className="text-sm font-semibold text-gray-700 flex items-center">
-                        <span className="bg-green-100 text-green-700 w-5 h-5 flex items-center justify-center rounded-full text-xs mr-2 font-bold">3</span>
-                        选择配送主食 (多选 & 追加)
-                      </label>
-                      <div className="grid grid-cols-2 gap-3">
-                        {staples.map((food) => {
-                          const qty = selectedQuantities[food.id] || 0;
-                          const isSelected = qty > 0;
-                          return (
-                            <div
-                              key={food.id}
-                              onClick={() => handleCardClick(food.id)}
-                              className={cn(
-                                "cursor-pointer rounded-2xl border p-3.5 flex flex-col items-center text-center justify-center transition-all duration-150 active:scale-95 min-h-[90px]",
-                                isSelected
-                                  ? "border-green-500 bg-green-50/50 shadow-sm"
-                                  : "border-gray-100 bg-[#FAFAFA] hover:border-gray-200"
-                              )}
-                            >
-                              <span className="text-xs font-bold text-gray-800 leading-tight mb-1">{food.name}</span>
-                              <span className="text-[10px] text-green-600 font-semibold mb-2">¥{food.price.toFixed(2)}</span>
-                              
-                              <QuantitySelector
-                                quantity={qty}
-                                onChange={(newQty) => {
-                                  setSelectedQuantities(prev => {
-                                    if (newQty === 0) {
-                                      const next = { ...prev };
-                                      delete next[food.id];
-                                      return next;
-                                    }
-                                    return { ...prev, [food.id]: newQty };
-                                  });
-                                }}
-                              />
-                            </div>
-                          );
-                        })}
+                      <div className="flex items-center space-x-2 mb-2">
+                        <span className="bg-white/20 text-xs px-2 py-0.5 rounded-full backdrop-blur-sm flex items-center">
+                          <Sparkles className="w-3 h-3 mr-1 text-yellow-300 animate-pulse" /> 社区小食堂
+                        </span>
+                        <span className="text-xs text-green-100">| 班级集中配送</span>
                       </div>
+                      <h2 className="text-xl font-bold tracking-wide">董老师厨房 · {selectedDate} 订餐接龙 🍀</h2>
+                      <p className="text-xs text-green-100 mt-2 font-light leading-relaxed">
+                        【每日订餐接龙】为了让孩子们吃上新鲜、营养、美味的午餐，请各位家长按要求如实填写，感谢您的配合与支持！
+                      </p>
                     </div>
-                  )}
 
-                  {/* #04 选择每日菜品 (多选 & 追加) */}
-                  {mains.length > 0 && (
-                    <div className="space-y-3 pt-4 border-t border-dashed border-gray-100">
-                      <label className="text-sm font-semibold text-gray-700 flex items-center">
-                        <span className="bg-green-100 text-green-700 w-5 h-5 flex items-center justify-center rounded-full text-xs mr-2 font-bold">4</span>
-                        选择每日菜品 (荤素多选 & 追加)
-                      </label>
-                      
-                      {/* 菜品列表：荷菜排在前，素菜排在后 */}
-                      <div className="space-y-3">
-                        {[...mains]
-                          .sort((a, b) => {
-                            // MEAT = 0, VEGGIE = 1, 确保荷菜在前
-                            const order = (c: string) => c === FoodCategory.MEAT ? 0 : 1;
-                            return order(a.category) - order(b.category);
-                          })
-                          .map((food, index) => {
-                          const qty = selectedQuantities[food.id] || 0;
-                          const isSelected = qty > 0;
-                          const isMeat = food.category === FoodCategory.MEAT;
-                          return (
-                            <div
-                              key={food.id}
-                              onClick={() => handleCardClick(food.id)}
-                              className={cn(
-                                "cursor-pointer rounded-2xl border p-3 flex items-center justify-between transition-all duration-150 active:scale-[0.99]",
-                                isSelected
-                                  ? "border-green-500 bg-green-50/30 shadow-sm"
-                                  : "border-gray-100 bg-[#FAFAFA] hover:border-gray-200"
-                              )}
-                            >
-                              <div className="flex items-center space-x-2.5">
-                                {/* 拟真微信序号数字 */}
-                                {getSolitaireIndexBadge(index)}
-                                
-                                <div>
-                                  <div className="flex items-center">
-                                    <span className="text-xs font-bold text-gray-800">{food.name}</span>
-                                    <span className={cn(
-                                      "text-[9px] px-1.5 py-0.5 rounded-md ml-1.5 font-medium",
-                                      isMeat ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"
-                                    )}>
-                                      {isMeat ? '🍖 荤菜' : '🥦 素菜'}
-                                    </span>
-                                  </div>
-                                  <span className="text-[10px] text-gray-400 font-light mt-0.5 block leading-tight">{food.description || '精心搭配，健康美味'}</span>
+                    {/* 接龙选项部分 */}
+                    <div className="p-5 space-y-6">
+
+                      {/* #01 配送班级 */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700 flex items-center">
+                          <span className="bg-green-100 text-green-700 w-5 h-5 flex items-center justify-center rounded-full text-xs mr-2 font-bold">1</span>
+                          学校、年级班级
+                        </label>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <School className="h-4 w-4 text-gray-400" />
+                          </div>
+                          <input
+                            type="text"
+                            disabled
+                            value={currentStudent?.class || '暂无班级信息'}
+                            className="block w-full pl-9 pr-3 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-600 focus:outline-none cursor-not-allowed font-medium"
+                          />
+                        </div>
+                      </div>
+
+                      {/* #02 订餐学生姓名 */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700 flex items-center">
+                          <span className="bg-green-100 text-green-700 w-5 h-5 flex items-center justify-center rounded-full text-xs mr-2 font-bold">2</span>
+                          订餐学生姓名
+                        </label>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <User className="h-4 w-4 text-gray-400" />
+                          </div>
+                          <input
+                            type="text"
+                            disabled
+                            value={currentStudent?.name || '请先添加学生'}
+                            className="block w-full pl-9 pr-3 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-600 focus:outline-none cursor-not-allowed font-medium"
+                          />
+                        </div>
+                      </div>
+
+                      {/* #03 选择配送主食 (多选 & 追加) */}
+                      {staples.length > 0 && (
+                        <div className="space-y-3 pt-4 border-t border-dashed border-gray-100">
+                          <label className="text-sm font-semibold text-gray-700 flex items-center">
+                            <span className="bg-green-100 text-green-700 w-5 h-5 flex items-center justify-center rounded-full text-xs mr-2 font-bold">3</span>
+                            选择配送主食 (多选 & 追加)
+                          </label>
+                          <div className="grid grid-cols-2 gap-3">
+                            {staples.map((food) => {
+                              const qty = selectedQuantities[food.id] || 0;
+                              const isSelected = qty > 0;
+                              return (
+                                <div
+                                  key={food.id}
+                                  onClick={() => handleCardClick(food.id)}
+                                  className={cn(
+                                    "cursor-pointer rounded-2xl border p-3.5 flex flex-col items-center text-center justify-center transition-all duration-150 active:scale-95 min-h-[90px]",
+                                    isSelected
+                                      ? "border-green-500 bg-green-50/50 shadow-sm"
+                                      : "border-gray-100 bg-[#FAFAFA] hover:border-gray-200"
+                                  )}
+                                >
+                                  <span className="text-xs font-bold text-gray-800 leading-tight mb-3">{food.name}</span>
+
+                                  <QuantitySelector
+                                    quantity={qty}
+                                    onChange={(newQty) => {
+                                      setSelectedQuantities(prev => {
+                                        if (newQty === 0) {
+                                          const next = { ...prev };
+                                          delete next[food.id];
+                                          return next;
+                                        }
+                                        return { ...prev, [food.id]: newQty };
+                                      });
+                                    }}
+                                  />
                                 </div>
-                              </div>
-                              
-                              <div className="flex items-center space-x-3">
-                                <span className="text-xs font-bold text-gray-700 mr-1">¥{food.price.toFixed(2)}</span>
-                                <QuantitySelector
-                                  quantity={qty}
-                                  onChange={(newQty) => {
-                                    setSelectedQuantities(prev => {
-                                      if (newQty === 0) {
-                                        const next = { ...prev };
-                                        delete next[food.id];
-                                        return next;
-                                      }
-                                      return { ...prev, [food.id]: newQty };
-                                    });
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
 
-                  {/* #05 汤品选择 (需要/不需要) */}
-                  {soups.length > 0 && (
-                    <div className="space-y-3 pt-4 border-t border-dashed border-gray-100">
-                      <label className="text-sm font-semibold text-gray-700 flex items-center">
-                        <span className="bg-green-100 text-green-700 w-5 h-5 flex items-center justify-center rounded-full text-xs mr-2 font-bold">5</span>
-                        今日营养汤品选择
-                      </label>
-                      
-                      <div className="space-y-3">
-                        {soups.map((food) => {
-                          const qty = selectedQuantities[food.id] || 0;
-                          const isYes = qty > 0;
-                          return (
-                            <div key={food.id} className="rounded-2xl border border-gray-100 bg-[#FAFAFA] p-3 space-y-3">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-3">
-                                  <span className="text-lg">🥣</span>
-                                  <div>
-                                    <div className="flex items-center">
-                                      <span className="text-xs font-bold text-gray-800">{food.name}</span>
+                      {/* #04 选择每日菜品 (多选 & 追加) */}
+                      {mains.length > 0 && (
+                        <div className="space-y-3 pt-4 border-t border-dashed border-gray-100">
+                          <label className="text-sm font-semibold text-gray-700 flex items-center">
+                            <span className="bg-green-100 text-green-700 w-5 h-5 flex items-center justify-center rounded-full text-xs mr-2 font-bold">4</span>
+                            选择每日菜品 (荤素多选 & 追加)
+                          </label>
+
+                          {/* 菜品列表：荷菜排在前，素菜排在后 */}
+                          <div className="space-y-3">
+                            {[...mains]
+                              .sort((a, b) => {
+                                // MEAT = 0, VEGGIE = 1, 确保荷菜在前
+                                const order = (c: string) => c === FoodCategory.MEAT ? 0 : 1;
+                                return order(a.category) - order(b.category);
+                              })
+                              .map((food, index) => {
+                                const qty = selectedQuantities[food.id] || 0;
+                                const isSelected = qty > 0;
+                                const isMeat = food.category === FoodCategory.MEAT;
+                                return (
+                                  <div
+                                    key={food.id}
+                                    onClick={() => handleCardClick(food.id)}
+                                    className={cn(
+                                      "cursor-pointer rounded-2xl border p-3 flex items-center justify-between transition-all duration-150 active:scale-[0.99]",
+                                      isSelected
+                                        ? "border-green-500 bg-green-50/30 shadow-sm"
+                                        : "border-gray-100 bg-[#FAFAFA] hover:border-gray-200"
+                                    )}
+                                  >
+                                    <div className="flex items-center space-x-2.5">
+                                      {/* 拟真微信序号数字 */}
+                                      {getSolitaireIndexBadge(index)}
+
+                                      <div>
+                                        <div className="flex items-center">
+                                          <span className="text-xs font-bold text-gray-800">{food.name}</span>
+                                          <span className={cn(
+                                            "text-[9px] px-1.5 py-0.5 rounded-md ml-1.5 font-medium",
+                                            isMeat ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"
+                                          )}>
+                                            {isMeat ? '🍖 荤菜' : '🥦 素菜'}
+                                          </span>
+                                        </div>
+                                        <span className="text-[10px] text-gray-400 font-light mt-0.5 block leading-tight">{food.description || '精心搭配，健康美味'}</span>
+                                      </div>
                                     </div>
-                                    <span className="text-[10px] text-gray-400 block font-light mt-0.5">每日例汤，精细熬制</span>
+
+                                    <div className="flex items-center space-x-3">
+                                      <QuantitySelector
+                                        quantity={qty}
+                                        onChange={(newQty) => {
+                                          if (newQty > qty) {
+                                            const currentMainsCount = mains.reduce((sum, f) => sum + (selectedQuantities[f.id] || 0), 0);
+                                            if (currentMainsCount >= 3) {
+                                              toast.error('荤菜和素菜累计最多只能选择3份哦 🍱');
+                                              return;
+                                            }
+                                          }
+                                          setSelectedQuantities(prev => {
+                                            if (newQty === 0) {
+                                              const next = { ...prev };
+                                              delete next[food.id];
+                                              return next;
+                                            }
+                                            return { ...prev, [food.id]: newQty };
+                                          });
+                                        }}
+                                      />
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* #05 汤品选择 (需要/不需要) */}
+                      {soups.length > 0 && (
+                        <div className="space-y-3 pt-4 border-t border-dashed border-gray-100">
+                          <label className="text-sm font-semibold text-gray-700 flex items-center">
+                            <span className="bg-green-100 text-green-700 w-5 h-5 flex items-center justify-center rounded-full text-xs mr-2 font-bold">5</span>
+                            今日营养汤品选择
+                          </label>
+
+                          <div className="space-y-3">
+                            {soups.map((food) => {
+                              const qty = selectedQuantities[food.id] || 0;
+                              const isYes = qty > 0;
+                              return (
+                                <div key={food.id} className="rounded-2xl border border-gray-100 bg-[#FAFAFA] p-3 space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-3">
+                                      <span className="text-lg">🥣</span>
+                                      <div>
+                                        <div className="flex items-center">
+                                          <span className="text-xs font-bold text-gray-800">{food.name}</span>
+                                        </div>
+                                        <span className="text-[10px] text-gray-400 block font-light mt-0.5">每日例汤，精细熬制</span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex space-x-2 items-center">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedQuantities(prev => ({ ...prev, [food.id]: 1 }));
+                                      }}
+                                      className={cn(
+                                        "flex-1 py-2 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center space-x-1",
+                                        isYes
+                                          ? "bg-green-500 border-transparent text-white shadow-sm"
+                                          : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                                      )}
+                                    >
+                                      {isYes && <Check className="w-3.5 h-3.5" />}
+                                      <span>👍 需要汤品</span>
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedQuantities(prev => {
+                                          const next = { ...prev };
+                                          delete next[food.id];
+                                          return next;
+                                        });
+                                      }}
+                                      className={cn(
+                                        "flex-1 py-2 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center space-x-1",
+                                        !isYes
+                                          ? "bg-gray-700 border-transparent text-white shadow-sm"
+                                          : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                                      )}
+                                    >
+                                      {!isYes && <Check className="w-3.5 h-3.5" />}
+                                      <span>🙅 不需要</span>
+                                    </button>
                                   </div>
                                 </div>
-                                <span className="text-xs font-bold text-green-600">¥{food.price.toFixed(2)}</span>
-                              </div>
-                              
-                              <div className="flex space-x-2 items-center">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setSelectedQuantities(prev => ({ ...prev, [food.id]: 1 }));
-                                  }}
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* #06 水果酸奶饮品 (多选 & 追加) */}
+                      {desserts.length > 0 && (
+                        <div className="space-y-3 pt-4 border-t border-dashed border-gray-100">
+                          <label className="text-sm font-semibold text-gray-700 flex items-center">
+                            <span className="bg-green-100 text-green-700 w-5 h-5 flex items-center justify-center rounded-full text-xs mr-2 font-bold">6</span>
+                            水果、饮品与健康酸奶 (多选 & 追加)
+                          </label>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            {desserts.map((food) => {
+                              const qty = selectedQuantities[food.id] || 0;
+                              const isSelected = qty > 0;
+                              return (
+                                <div
+                                  key={food.id}
+                                  onClick={() => handleCardClick(food.id)}
                                   className={cn(
-                                    "flex-1 py-2 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center space-x-1",
-                                    isYes
-                                      ? "bg-green-500 border-transparent text-white shadow-sm"
-                                      : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                                    "cursor-pointer rounded-2xl border p-3.5 flex flex-col items-center text-center justify-center transition-all duration-150 active:scale-95 min-h-[90px]",
+                                    isSelected
+                                      ? "border-green-500 bg-green-50/50 shadow-sm"
+                                      : "border-gray-100 bg-[#FAFAFA] hover:border-gray-200"
                                   )}
                                 >
-                                  {isYes && <Check className="w-3.5 h-3.5" />}
-                                  <span>👍 需要汤品</span>
-                                </button>
-                                
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setSelectedQuantities(prev => {
-                                      const next = { ...prev };
-                                      delete next[food.id];
-                                      return next;
-                                    });
-                                  }}
-                                  className={cn(
-                                    "flex-1 py-2 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center space-x-1",
-                                    !isYes
-                                      ? "bg-gray-700 border-transparent text-white shadow-sm"
-                                      : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
-                                  )}
-                                >
-                                  {!isYes && <Check className="w-3.5 h-3.5" />}
-                                  <span>🙅 不需要</span>
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
+                                  <span className="text-xs font-bold text-gray-800 leading-tight mb-1">{food.name}</span>
+                                  <span className="text-[10px] text-green-600 font-semibold mb-2">¥{food.price.toFixed(2)}</span>
 
-                  {/* #06 水果酸奶饮品 (多选 & 追加) */}
-                  {desserts.length > 0 && (
-                    <div className="space-y-3 pt-4 border-t border-dashed border-gray-100">
-                      <label className="text-sm font-semibold text-gray-700 flex items-center">
-                        <span className="bg-green-100 text-green-700 w-5 h-5 flex items-center justify-center rounded-full text-xs mr-2 font-bold">6</span>
-                        水果、饮品与健康酸奶 (多选 & 追加)
-                      </label>
-                      
-                      <div className="grid grid-cols-2 gap-3">
-                        {desserts.map((food) => {
-                          const qty = selectedQuantities[food.id] || 0;
-                          const isSelected = qty > 0;
-                          return (
-                            <div
-                              key={food.id}
-                              onClick={() => handleCardClick(food.id)}
-                              className={cn(
-                                "cursor-pointer rounded-2xl border p-3.5 flex flex-col items-center text-center justify-center transition-all duration-150 active:scale-95 min-h-[90px]",
-                                isSelected
-                                  ? "border-green-500 bg-green-50/50 shadow-sm"
-                                  : "border-gray-100 bg-[#FAFAFA] hover:border-gray-200"
-                              )}
-                            >
-                              <span className="text-xs font-bold text-gray-800 leading-tight mb-1">{food.name}</span>
-                              <span className="text-[10px] text-green-600 font-semibold mb-2">¥{food.price.toFixed(2)}</span>
-                              
-                              <QuantitySelector
-                                quantity={qty}
-                                onChange={(newQty) => {
-                                  setSelectedQuantities(prev => {
-                                    if (newQty === 0) {
-                                      const next = { ...prev };
-                                      delete next[food.id];
-                                      return next;
-                                    }
-                                    return { ...prev, [food.id]: newQty };
-                                  });
-                                }}
-                              />
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
+                                  <QuantitySelector
+                                    quantity={qty}
+                                    onChange={(newQty) => {
+                                      setSelectedQuantities(prev => {
+                                        if (newQty === 0) {
+                                          const next = { ...prev };
+                                          delete next[food.id];
+                                          return next;
+                                        }
+                                        return { ...prev, [food.id]: newQty };
+                                      });
+                                    }}
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
 
-                  {/* 留言备注（选填） */}
-                  <div className="space-y-2 pt-4 border-t border-dashed border-gray-100">
-                    <label className="text-sm font-semibold text-gray-700 flex items-center">
-                      <MessageSquare className="w-4.5 h-4.5 mr-1.5 text-gray-500" />
-                      留言备注 (选填)
-                    </label>
-                    <textarea
-                      value={note}
-                      onChange={(e) => setNote(e.target.value)}
-                      placeholder="如有忌口（如不加辣、少盐等），请写在这里..."
-                      className="block w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:ring-1 focus:ring-green-500 focus:border-green-500 focus:outline-none min-h-[60px]"
-                    />
+                      {/* 留言备注（选填） */}
+                      <div className="space-y-2 pt-4 border-t border-dashed border-gray-100">
+                        <label className="text-sm font-semibold text-gray-700 flex items-center">
+                          <MessageSquare className="w-4.5 h-4.5 mr-1.5 text-gray-500" />
+                          留言备注 (选填)
+                        </label>
+                        <textarea
+                          value={note}
+                          onChange={(e) => setNote(e.target.value)}
+                          placeholder="如有忌口（如不加辣、少盐等），请写在这里..."
+                          className="block w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:ring-1 focus:ring-green-500 focus:border-green-500 focus:outline-none min-h-[60px]"
+                        />
+                      </div>
+
+                    </div>
                   </div>
-
-                </div>
-              </div>
-              </>
+                </>
               )} {/* end !todayOrderExists */}
 
             </div>
@@ -918,29 +930,15 @@ const Menu: React.FC = () => {
 
         {/* 底部固定结算挂架：已订餐时不展示 */}
         {foods.length > 0 && !todayOrderExists && (() => {
-          const { originalTotal, finalTotal, discount } = calculatePriceDetails();
           return (
             <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/80 backdrop-blur-md border-t border-gray-100 p-4 z-50 shadow-lg flex flex-col rounded-t-3xl">
-              {discount > 0 && (
-                <div className="flex items-center space-x-1 mb-2 px-1 text-[10px] text-green-700 bg-green-50/50 py-1 rounded-lg border border-green-100/50">
-                  <Sparkles className="w-3.5 h-3.5 text-green-600 animate-pulse" />
-                  <span className="font-medium">恭喜！已自动为您选择最优套餐抵扣组合，节省了 ¥{discount.toFixed(2)} 💖</span>
-                </div>
-              )}
               <div className="flex items-center justify-between">
                 <div className="flex-1 mr-4">
-                  <div className="flex items-baseline space-x-1">
-                    <span className="text-xs text-gray-400 font-light">合计：</span>
-                    <span className="text-2xl font-black text-green-600">¥{finalTotal.toFixed(2)}</span>
-                    {discount > 0 && (
-                      <span className="text-xs text-gray-400 line-through">¥{originalTotal.toFixed(2)}</span>
-                    )}
-                  </div>
-                  <p className="text-[10px] text-gray-400 truncate mt-0.5 max-w-[200px]" title={getSelectedSummaryText()}>
+                  <p className="text-xs text-gray-700 font-semibold truncate max-w-[240px]" title={getSelectedSummaryText()}>
                     已选：{getSelectedSummaryText()}
                   </p>
                 </div>
-                
+
                 <Button
                   onClick={handleSubmitSolitaire}
                   disabled={isSubmitting}

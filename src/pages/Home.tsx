@@ -252,10 +252,18 @@ const Home: React.FC = () => {
                                 <p className="text-xs text-gray-400 line-clamp-1 mt-0.5 font-light">{food.description || '营养搭配，美味可口'}</p>
                               </div>
                               <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-50">
-                                <span className="text-orange-600 font-extrabold text-sm">¥{food.price.toFixed(2)}</span>
-                                <span className="text-[9px] font-bold bg-green-50 text-green-600 px-1.5 py-0.5 rounded-full border border-green-100 flex-shrink-0">
-                                  今日
-                                </span>
+                                {food.category === FoodCategory.DESSERT_FRUIT ? (
+                                  <>
+                                    <span className="text-orange-600 font-extrabold text-sm">¥{food.price.toFixed(2)}</span>
+                                    <span className="text-[9px] font-bold bg-green-50 text-green-600 px-1.5 py-0.5 rounded-full border border-green-100 flex-shrink-0">
+                                      今日
+                                    </span>
+                                  </>
+                                ) : (
+                                  <span className="text-[9px] font-bold bg-green-50 text-green-600 px-2 py-0.5 rounded-full border border-green-100 flex-shrink-0 ml-auto">
+                                    今日供应
+                                  </span>
+                                )}
                               </div>
                             </CardContent>
                           </Card>
